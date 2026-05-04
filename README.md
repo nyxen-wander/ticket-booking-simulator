@@ -30,14 +30,59 @@ The system manages the "Session-First" workflow, allowing employees to select fr
 ## Getting Started
 
 ### 1. Database Setup
-Ensure your PostgreSQL instance has the following tables:
+Ensure your PostgreSQL instance has the following tables with appropriate foreign key constraints:
 
 - `movies`
 - `theaters`
 - `sessions`
 - `bookings`
 
-with appropriate foreign key constraints.
+Below is the schema reference for each:
+
+#### Table: movies
+
+Stores the catalog of available films.
+
+|Column|Type|Description|
+|--------|---|--------------|
+|id|SERIAL|	Primary Key.|
+|movie_title|VARCHAR(50)|The title of the film.|
+|rating|NUMERIC|Critical rating (e.g., 6.9). |
+|duration|INTEGER|Run time in minutes. |
+
+#### Table: theaters
+
+Manages the physical rooms and their operational status.
+
+Column	Type	Description
+|id	|SERIAL	|Primary Key.|
+|---|-------|------------|
+|total_capacity|INTEGER|Total seats in the room.|
+|is_active|BOOLEAN|Maintenance toggle (filters sessions if false). |
+
+#### Table: sessions (The Core Engine)
+
+The bridge between movies and theaters. This is the primary target for bookings.  
+
+Column	Type	Description
+|id|SERIAL|Primary Key.  |
+|---|---|---|
+|movie_id|INTEGER|Foreign Key referencing movies(id).  |
+|theater_id|INTEGER|Foreign Key referencing theaters(id).  |
+|available_seats|INTEGER|Real-time count of remaining tickets. |
+|is_active|BOOLEAN|Scheduling toggle for specific showtimes.  |
+
+#### Table: bookings
+
+Audit trail for every transaction processed by the system.  
+
+|Column|Type|Description|
+|---|---|---|
+|id|SERIAL|Primary Key.  |
+|session_id|INTEGER|Foreign Key referencing sessions(id).  |
+|customer_name|VARCHAR(50)|Sanitized name of the booker.  |
+|seat_count|INTEGER|Number of tickets purchased.  |
+|created_at|TIMESTAMP|Auto-generated timestamp of the transaction.|
 
 ### 2. Environment Configuration
 Create a `.env` file in the project root that is containing:
