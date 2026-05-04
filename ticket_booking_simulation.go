@@ -36,20 +36,18 @@ func main() {
 	// Connect to the database and retrieve the user's selected session.
 	db, databaseConnectErr := sql.Open("pgx", connectionString)
 
-	selectedSessionId, sessionDetail, getSessionErr := getSession(db)
-
-	if getSessionErr != nil {
-		log.Fatal(getSessionErr)
-	}
-
 	if databaseConnectErr != nil {
 		log.Fatal(databaseConnectErr)
 	}
 
-	err = db.Ping()
-
-	if err != nil {
+	if err := db.Ping(); err != nil {
 		log.Fatal(err)
+	}
+
+	selectedSessionId, sessionDetail, getSessionErr := getSession(db)
+
+	if getSessionErr != nil {
+		log.Fatal(getSessionErr)
 	}
 
 	// Fetch the current available seat count for the selected session.
@@ -62,6 +60,8 @@ func main() {
 		log.Fatal(scanErr)
 	}
 
+	nameRegex := regexp.MustCompile(`^[[:alpha:]|\s]*$`)
+
 	// Enter the main booking loop until all seats are sold or the user exits.
 	for totalSeats > 0 {
 		clearScreen()
@@ -73,7 +73,10 @@ func main() {
 		fmt.Print("Input: ")
 
 		// Read and parse user input for customer name and ticket amount.
-		scanner.Scan()
+		if !scanner.Scan() {
+			fmt.Println("ERROR:", scanner.Err())
+			break
+		}
 
 		if scanner.Text() == "EXIT" {
 			break
@@ -90,7 +93,6 @@ func main() {
 		customerName := strings.ToLower(strings.Join(bufferInput[:len(bufferInput)-1], " "))
 
 		// Validate the customer name and process the booking if seats are available.
-		nameRegex := regexp.MustCompile(`^[[:alpha:]|\s]*$`)
 		nameCheck := nameRegex.FindString(customerName)
 
 		if nameCheck == "" {
@@ -131,15 +133,7 @@ func main() {
 
 				}
 
-				if slices.Contains(keys, customerName) {
-
-					bookRecord[customerName] += ticketAmount
-
-				} else {
-
-					bookRecord[customerName] = ticketAmount
-
-				}
+				bookRecord[customerName] += ticketAmount
 
 				debugMsg = fmt.Sprintf("SUCCESS: %d seat(s) booked by %s.", ticketAmount, customerName)
 
@@ -192,23 +186,23 @@ func getSession(db *sql.DB) (int, string, error) {
 
 	clearScreen()
 
-	for !selectedSessionIdIsValid {
+	for bufferMovieSessions.Next() {
+		err := bufferMovieSessions.Scan(&sessionId, &movieTitle, &rating, &duration, &theater)
 
-		for bufferMovieSessions.Next() {
-			err := bufferMovieSessions.Scan(&sessionId, &movieTitle, &rating, &duration, &theater)
+		if err != nil {
 
-			if err != nil {
-
-				fmt.Println("ERROR:", err)
-				continue
-
-			}
-
-			sessionIdSlice = append(sessionIdSlice, sessionId)
-
-			fmt.Printf("Session ID: %d\nTitle: %s\nRating: %s\nDuration: %s\nTheater: %s\n\n", sessionId, movieTitle, rating, duration, theater)
+			fmt.Println("ERROR:", err)
+			continue
 
 		}
+
+		sessionIdSlice = append(sessionIdSlice, sessionId)
+
+		fmt.Printf("Session ID: %d\nTitle: %s\nRating: %s\nDuration: %s\nTheater: %s\n\n", sessionId, movieTitle, rating, duration, theater)
+
+	}
+
+	for !selectedSessionIdIsValid {
 
 		// Prompt the user to select a session ID.
 		fmt.Print("Enter session ID: ")
