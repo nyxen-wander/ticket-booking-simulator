@@ -1,4 +1,4 @@
-# ticket-booking-simulator
+# Ticket Booking Simulator
 
 - Status: PostgreSQL Integrated
 
