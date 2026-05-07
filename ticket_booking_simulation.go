@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	godotenv "github.com/joho/godotenv"
 
@@ -29,9 +30,15 @@ func main() {
 
 	connectionString := os.Getenv("DB_URL")
 	scanner := bufio.NewScanner(os.Stdin)
-	bookRecord := map[string]int{}
-	var totalSeats int
-	var debugMsg string
+	var totalSeats, selectedSessionId int
+	var debugMsg, sessionDetail string
+	var getSessionErr error
+
+	/*timeTemp := strings.Split(time.Now().String(), " ")[0:2]
+
+	timeTemp := strings.Split(time.Now().Format("DateTime"), " ")[0:2]*/
+
+	currentTime := time.Now().Format("2006-01-02 15:04:05")
 
 	// Connect to the database and retrieve the user's selected session.
 	db, databaseConnectErr := sql.Open("pgx", connectionString)
@@ -44,21 +51,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	selectedSessionId, sessionDetail, getSessionErr := getSession(db)
+	selectedSessionId, sessionDetail, getSessionErr = getSession(db)
 
 	if getSessionErr != nil {
 		log.Fatal(getSessionErr)
 	}
 
-	// Fetch the current available seat count for the selected session.
-	bufferAvailableSeats := db.QueryRow("SELECT available_seats FROM sessions WHERE id = $1;", selectedSessionId)
-
-	// Check for error when fetching and assign the output into a native variable
-	scanErr := bufferAvailableSeats.Scan(&totalSeats)
-
-	if scanErr != nil {
-		log.Fatal(scanErr)
-	}
+	totalSeats, _ = getAvailableSeats(db, selectedSessionId)
 
 	nameRegex := regexp.MustCompile(`^[[:alpha:]|\s]*$`)
 
@@ -78,8 +77,21 @@ func main() {
 			break
 		}
 
-		if scanner.Text() == "EXIT" {
+		if strings.ToLower(scanner.Text()) == "exit" {
 			break
+		}
+
+		if strings.ToLower(scanner.Text()) == "list" {
+
+			selectedSessionId, sessionDetail, getSessionErr = getSession(db)
+
+			if getSessionErr != nil {
+				log.Fatal(getSessionErr)
+			}
+
+			totalSeats, _ = getAvailableSeats(db, selectedSessionId)
+
+			continue
 		}
 
 		bufferInput := strings.Split(scanner.Text(), " ")
@@ -124,17 +136,6 @@ func main() {
 					}
 				}
 
-				// Update the local booking record for the final summary.
-				keys := make([]string, 0, len(bookRecord))
-
-				for k := range bookRecord {
-
-					keys = append(keys, k)
-
-				}
-
-				bookRecord[customerName] += ticketAmount
-
 				debugMsg = fmt.Sprintf("SUCCESS: %d seat(s) booked by %s.", ticketAmount, customerName)
 
 			} else {
@@ -149,22 +150,18 @@ func main() {
 
 	}
 
-	// Print the final booking summary and close the database connection.
-	keys := make([]string, 0, len(bookRecord))
+	// After the loop, offer to print a summary of the bookings.
+	fmt.Print("INFO: Booking process has finished. Print summary? (y/n): ")
 
-	for k := range bookRecord {
-
-		keys = append(keys, k)
-
+	if scanner.Scan() {
+		if strings.ToLower(scanner.Text()) == "y" {
+			printBookSummary(db, currentTime)
+		}
+	} else {
+		fmt.Println("ERROR:", scanner.Err())
 	}
 
-	fmt.Printf("\n----------------- BOOKING SUMMARY -----------------\n")
-
-	for key := range keys {
-
-		fmt.Printf("%s: %d ticket(s).\n", keys[key], bookRecord[keys[key]])
-
-	}
+	fmt.Println("Program is exiting.")
 
 	db.Close()
 }
@@ -202,6 +199,7 @@ func getSession(db *sql.DB) (int, string, error) {
 
 	}
 
+	// Prompt the user to select a valid session ID and fetch its details.
 	for !selectedSessionIdIsValid {
 
 		// Prompt the user to select a session ID.
@@ -245,6 +243,8 @@ func getSession(db *sql.DB) (int, string, error) {
 }
 
 func clearScreen() {
+
+	// Execute the appropriate system command to clear the terminal screen.
 	if runtime.GOOS == "windows" {
 		cmd := exec.Command("cmd", "/c", "cls")
 		cmd.Stdout = os.Stdout
@@ -254,4 +254,45 @@ func clearScreen() {
 		cmd.Stdout = os.Stdout
 		cmd.Run()
 	}
+}
+
+// Fetch the current available seat count for the selected session from the database.
+func getAvailableSeats(db *sql.DB, selectedSessionId int) (int, error) {
+
+	var totalSeats int
+
+	// Fetch the current available seat count for the selected session.
+	bufferAvailableSeats := db.QueryRow("SELECT available_seats FROM sessions WHERE id = $1;", selectedSessionId)
+
+	// Check for error when fetching and assign the output into a native variable
+	scanErr := bufferAvailableSeats.Scan(&totalSeats)
+
+	if scanErr != nil {
+		log.Fatal(scanErr)
+	}
+
+	return totalSeats, nil
+}
+
+func printBookSummary(db *sql.DB, currentTime string) {
+
+	// Query the database for all bookings made since the program started.
+	bufferRow, queryErr := db.Query("select m.movie_title, s.theater_id, b.customer_name, b.seat_count, to_char(b.created_at, 'YYYY-MM-DD HH24:MI:SS') from bookings b join sessions s on b.session_id = s.id join movies m on m.id = s.movie_id where b.created_at between $1 and now();", currentTime)
+
+	if queryErr != nil {
+		log.Fatal(queryErr)
+	}
+
+	var movieTitle, theatherId, customerName, seatCount, createdAt, summaryDetail string
+
+	// Iterate through the results to build and print a formatted summary string.
+	for bufferRow.Next() {
+
+		bufferRow.Scan(&movieTitle, &theatherId, &customerName, &seatCount, &createdAt)
+
+		summaryDetail += fmt.Sprintf("Title\t\t: %s\nTheater\t\t: %s\nName\t\t: %s\nTicket(s)\t: %s\nDate\t\t: %s\n\n", movieTitle, theatherId, customerName, seatCount, createdAt)
+	}
+
+	fmt.Printf("\n--------------- BOOKING SUMMARY ---------------\n")
+	fmt.Print(summaryDetail)
 }
