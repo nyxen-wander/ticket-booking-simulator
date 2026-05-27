@@ -19,8 +19,10 @@ func mainMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *
 
 	isCompleted := false
 
+	// Loop until the user chooses to exit the main menu.
 	for !isCompleted {
 
+		// Render the main menu with the current debug message.
 		mr.sectionHeader = "MAIN MENU"
 		mr.menuSlice = mainMenuList()
 		mr.debugMsg = debugMsg
@@ -31,6 +33,7 @@ func mainMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *
 
 		}
 
+		// Read user input and handle different menu options.
 		if !scanner.Scan() {
 			return scanner.Err()
 		}
@@ -40,6 +43,7 @@ func mainMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *
 		switch userInput {
 		case "1":
 
+			// Validate admin credentials before entering the administration menu.
 			isAdmin, adminValidatorErr := adminValidator()
 
 			if adminValidatorErr != nil {
@@ -56,6 +60,7 @@ func mainMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *
 
 			} else {
 
+				// Enter the administration sub-menu and handle navigation signals.
 				signal, administrationErr := administration(db, scanner, nameRegex, mr, debugMsg)
 
 				if administrationErr != nil {
@@ -80,6 +85,7 @@ func mainMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *
 
 		case "2":
 
+			// Enter the ticket booking flow.
 			if ticketBookingErr := ticketBooking(db, scanner, nameRegex, debugMsg); ticketBookingErr != nil {
 
 				return ticketBookingErr
@@ -110,18 +116,21 @@ func administration(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp
 
 	isCompleted := false
 
+	// Loop until the user chooses to go back or exit the administration menu.
 	for !isCompleted {
 
 		mr.sectionHeader = "ADMINISTRATION MENU"
 		mr.menuSlice = adminMenuList()
 		mr.debugMsg = debugMsg
 
+		// Render the administration menu.
 		if renderMenuErr := mr.renderMenu(); renderMenuErr != nil {
 
 			return "", renderMenuErr
 
 		}
 
+		// Handle administrative actions like delete, insert, list, and update.
 		if !scanner.Scan() {
 
 			return "", scanner.Err()
@@ -246,10 +255,12 @@ func adminValidator() (bool, error) {
 	attempt := 0
 	isValidated := false
 
+	// Allow up to three attempts to enter the correct admin password.
 	for attempt < 3 {
 
 		fmt.Print("Enter password: ")
 
+		// Read the password securely from the terminal.
 		passByte, readPasswordErr := term.ReadPassword(int(os.Stdin.Fd()))
 
 		if readPasswordErr != nil {
@@ -258,6 +269,7 @@ func adminValidator() (bool, error) {
 
 		}
 
+		// Check the password against the environment variable.
 		if string(passByte) != os.Getenv("ADMIN_PASSWD") {
 
 			attempt++
@@ -379,6 +391,7 @@ func getSession(db *sql.DB, scanner *bufio.Scanner) (int, string, error) {
 
 	}
 
+	// Iterate through the sessions and print their details.
 	for bufferMovieSessions.Next() {
 
 		if err := bufferMovieSessions.Scan(&sessionId, &movieTitle, &rating, &duration, &theater); err != nil {
@@ -441,6 +454,7 @@ func getSession(db *sql.DB, scanner *bufio.Scanner) (int, string, error) {
 
 func customerNameValidator(nameRegex *regexp.Regexp, customerName string) (string, string) {
 
+	// Validate the customer name against the provided regex.
 	if nameRegex.FindString(customerName) == "" {
 
 		return "", "ERROR: Invalid customer name. Please try again."
@@ -452,6 +466,7 @@ func customerNameValidator(nameRegex *regexp.Regexp, customerName string) (strin
 
 func ticketAmountValidator(ticketAmount int) (int, string) {
 
+	// Ensure the ticket amount is a positive integer.
 	if ticketAmount <= 0 {
 
 		return 0, "ERROR: Invalid ticket amount. Please try again."
@@ -464,6 +479,7 @@ func ticketAmountValidator(ticketAmount int) (int, string) {
 
 func scannerInitializator() (*bufio.Scanner, error) {
 
+	// Initialize a new scanner for standard input.
 	scanner := bufio.NewScanner(os.Stdin)
 
 	if scannerErr := scanner.Err(); scannerErr != nil {
@@ -520,6 +536,7 @@ type menuRenderer struct {
 
 func (mr *menuRenderer) renderMenu() error {
 
+	// Clear the screen and render the standard menu header and options.
 	if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
 		return clearScreenErr
@@ -534,6 +551,7 @@ func (mr *menuRenderer) renderMenu() error {
 
 	}
 
+	// Print the debug message and input prompt, then reset the debug message.
 	fmt.Printf("\n%s\n\n", mr.debugMsg)
 	fmt.Printf("Input: ")
 
@@ -545,6 +563,7 @@ func (mr *menuRenderer) renderMenu() error {
 
 func (mr *menuRenderer) renderMenuFilter() error {
 
+	// Clear the screen and render the menu header with filter-specific content and guides.
 	if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
 		return clearScreenErr
@@ -567,6 +586,7 @@ func (mr *menuRenderer) renderMenuFilter() error {
 
 func (mr *menuRenderer) renderMenuNonFilter() error {
 
+	// Clear the screen and render the menu header with non-filter content and a back guide.
 	if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
 		return clearScreenErr
@@ -586,6 +606,7 @@ func (mr *menuRenderer) renderMenuNonFilter() error {
 
 func (mr *menuRenderer) renderMenuInsert() error {
 
+	// Clear the screen and render the header for the insertion menu.
 	if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
 		return clearScreenErr

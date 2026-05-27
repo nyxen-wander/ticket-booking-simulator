@@ -12,6 +12,7 @@ import (
 
 func ticketBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, debugMsg string) error {
 
+	// Initialize the booking environment and select an active session.
 	clearScreen()
 	debugMsg = ""
 
@@ -45,7 +46,8 @@ func ticketBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp,
 
 		switch userInput {
 		case "exit":
-			// After the loop, offer to print a summary of the bookings.
+
+			// If the user exits, optionally print a booking summary before returning.
 			fmt.Print("INFO: Booking process has finished. Print summary? (y/n): ")
 
 			if scanner.Scan() {
@@ -73,6 +75,7 @@ func ticketBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp,
 			}
 
 		case "list":
+			// Allow the user to switch to a different active session.
 			selectedSessionId, sessionDetail, totalSeats, listActiveSessionsErr = listActiveSessions(db, scanner)
 
 			if listActiveSessionsErr != nil {
@@ -131,6 +134,7 @@ func ticketBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp,
 
 			}
 
+			// If seats are available, perform a database transaction to update seats and record the booking.
 			if totalSeats >= ticketAmount {
 
 				trx, err := db.Begin()
@@ -191,6 +195,7 @@ func ticketBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp,
 
 func listActiveSessions(db *sql.DB, scanner *bufio.Scanner) (int, string, int, error) {
 
+	// Prompt the user to select a session and retrieve its details.
 	selectedSessionId, sessionDetail, getSessionErr := getSession(db, scanner)
 
 	if getSessionErr != nil {
@@ -199,6 +204,7 @@ func listActiveSessions(db *sql.DB, scanner *bufio.Scanner) (int, string, int, e
 
 	}
 
+	// Retrieve the number of available seats for the selected session.
 	totalSeats, getSeatsErr := getAvailableSeats(db, selectedSessionId)
 
 	if getSeatsErr != nil {

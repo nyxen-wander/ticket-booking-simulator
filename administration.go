@@ -16,8 +16,10 @@ func deleteMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 	isCompleted := false
 
+	// Loop until the user chooses to go back or exit.
 	for !isCompleted {
 
+		// Render the delete menu with the list of available tables.
 		mr.sectionHeader = "DELETE MENU"
 		mr.menuSlice = tablesList()
 		mr.debugMsg = debugMsg
@@ -28,6 +30,7 @@ func deleteMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 		}
 
+		// Handle user input to navigate to specific table deletion or exit.
 		if !scanner.Scan() {
 
 			return "", scanner.Err()
@@ -105,12 +108,15 @@ func insertMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr
 
 	isCompleted := false
 
+	// Loop until the user chooses to go back or exit.
 	for !isCompleted {
 
+		// Render the insert menu with the list of available tables.
 		mr.sectionHeader = "INSERT MENU"
 		mr.menuSlice = tablesList()
 		mr.debugMsg = debugMsg
 
+		// Handle user input to navigate to specific table insertion or exit.
 		if renderMenuErr := mr.renderMenu(); renderMenuErr != nil {
 
 			return "", renderMenuErr
@@ -193,12 +199,15 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 	isCompleted := false
 
+	// Loop until the user chooses to go back or exit.
 	for !isCompleted {
 
+		// Render the list menu with the list of available tables.
 		mr.sectionHeader = "LIST MENU"
 		mr.menuSlice = tablesList()
 		mr.debugMsg = debugMsg
 
+		// Handle user input to fetch and display records for the selected table.
 		if renderMenuErr := mr.renderMenu(); renderMenuErr != nil {
 
 			return "", renderMenuErr
@@ -361,8 +370,10 @@ func updateMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 	isCompleted := false
 
+	// Loop until the user chooses to go back or exit.
 	for !isCompleted {
 
+		// Render the update menu with the list of available tables.
 		mr.sectionHeader = "UPDATE MENU"
 		mr.menuSlice = tablesList()
 		mr.debugMsg = debugMsg
@@ -373,6 +384,7 @@ func updateMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 		}
 
+		// Handle user input to navigate to specific table updates or exit.
 		if !scanner.Scan() {
 			return "", scanner.Err()
 		}
@@ -451,6 +463,7 @@ func deleteMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 	mr.additionalMsg = ""
 	mr.debugMsg = debugMsg
 
+	// Fetch the current list of movies from the database.
 	mr.columnRows, mr.columnRowsKeys, mr.listColumnsErr = listMovies(db)
 
 	if mr.listColumnsErr != nil {
@@ -463,10 +476,12 @@ func deleteMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 	isCompleted := false
 
+	// Loop until a movie is deleted or the user goes back.
 	for !isCompleted {
 
 		mr.sectionHeader = "DELETE MOVIE"
 
+		// Render the movie list and prompt for an ID or filter command.
 		if renderMenuTableFilterErr := mr.renderMenuFilter(); renderMenuTableFilterErr != nil {
 
 			return renderMenuTableFilterErr
@@ -489,6 +504,7 @@ func deleteMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 		}
 
+		// Handle filtering or resetting the displayed movie list.
 		if strings.HasPrefix(userInput, "filter") {
 
 			bufferUserInput := strings.Split(userInput, " ")
@@ -545,6 +561,7 @@ func deleteMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 		fmt.Printf("---------------------------------------- DELETE CONFIRMATION ---------------------------------------\n\n")
 
+		// Validate the ID input and fetch the specific record for confirmation.
 		bufferQueryRow := db.QueryRow("SELECT * FROM movies WHERE id = $1;", idx)
 
 		if scanErr := bufferQueryRow.Scan(&id, &title, &rating, &duration); scanErr != nil {
@@ -567,7 +584,7 @@ func deleteMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 		if scanner.Text() == "y" || scanner.Text() == "Y" {
 
-			// here lies the trx to delete the row by the idx
+			// If confirmed, execute the deletion within a transaction.
 			trx, beginErr := db.Begin()
 
 			if beginErr != nil {
@@ -622,6 +639,7 @@ func deleteTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	mr.debugMsg = debugMsg
 
+	// Fetch the current list of theaters from the database.
 	mr.columnRows, _, mr.listColumnsErr = listTheaters(db)
 
 	if mr.listColumnsErr != nil {
@@ -634,10 +652,12 @@ func deleteTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	isCompleted := false
 
+	// Loop until a theater is deleted or the user goes back.
 	for !isCompleted {
 
 		mr.sectionHeader = "DELETE THEATER"
 
+		// Render the theater list and prompt for an ID.
 		if renderMenuErr := mr.renderMenuNonFilter(); renderMenuErr != nil {
 
 			return renderMenuErr
@@ -680,6 +700,7 @@ func deleteTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		bufferQueryRow := db.QueryRow("SELECT * FROM theaters WHERE id = $1;", idx)
 
+		// Validate the ID input and fetch the specific record for confirmation.
 		if scanErr := bufferQueryRow.Scan(&id, &totalCapacity, &isActive); scanErr != nil {
 
 			mr.debugMsg = "ERROR: Invalid ID. Please try again."
@@ -700,6 +721,7 @@ func deleteTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		if scanner.Text() == "y" || scanner.Text() == "Y" {
 
+			// If confirmed, execute the deletion within a transaction.
 			trx, beginErr := db.Begin()
 
 			if beginErr != nil {
@@ -757,6 +779,7 @@ func deleteSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	mr.debugMsg = debugMsg
 
+	// Fetch the current list of sessions from the database.
 	mr.columnRows, _, mr.listColumnsErr = listSessions(db)
 
 	if mr.listColumnsErr != nil {
@@ -769,10 +792,12 @@ func deleteSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	isCompleted := false
 
+	// Loop until a session is deleted or the user goes back.
 	for !isCompleted {
 
 		mr.sectionHeader = "DELETE SESSION"
 
+		// Render the session list and prompt for an ID.
 		if renderMenuErr := mr.renderMenuNonFilter(); renderMenuErr != nil {
 
 			return renderMenuErr
@@ -815,6 +840,7 @@ func deleteSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		bufferQueryRow := db.QueryRow("SELECT * FROM sessions WHERE id = $1;", idx)
 
+		// Validate the ID input and fetch the specific record for confirmation.
 		if scanErr := bufferQueryRow.Scan(&id, &movieId, &theaterId, &availableSeats, &isActive); scanErr != nil {
 
 			mr.debugMsg = "ERROR: Invalid ID. Please try again."
@@ -835,7 +861,7 @@ func deleteSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		if scanner.Text() == "y" || scanner.Text() == "Y" {
 
-			// here lies the trx to delete the row by the idx
+			// If confirmed, execute the deletion within a transaction.
 			trx, beginErr := db.Begin()
 
 			if beginErr != nil {
@@ -894,6 +920,7 @@ func deleteBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 	mr.additionalMsg = ""
 	mr.debugMsg = debugMsg
 
+	// Fetch the current list of bookings from the database.
 	mr.columnRows, mr.columnRowsKeys, mr.listColumnsErr = listBookings(db)
 
 	if mr.listColumnsErr != nil {
@@ -906,10 +933,12 @@ func deleteBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	isCompleted := false
 
+	// Loop until a booking is deleted or the user goes back.
 	for !isCompleted {
 
 		mr.sectionHeader = "DELETE BOOKING"
 
+		// Render the booking list and prompt for an ID or filter command.
 		if renderMenuTableFilterErr := mr.renderMenuFilter(); renderMenuTableFilterErr != nil {
 
 			return renderMenuTableFilterErr
@@ -932,6 +961,7 @@ func deleteBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
+		// Handle filtering or resetting the displayed booking list.
 		if strings.HasPrefix(userInput, "filter") {
 
 			bufferUserInput := strings.Split(userInput, " ")
@@ -988,6 +1018,7 @@ func deleteBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		fmt.Printf("---------------------------------------- DELETE CONFIRMATION ---------------------------------------\n\n")
 
+		// Validate the ID input and fetch the specific record for confirmation.
 		bufferQueryRow := db.QueryRow("SELECT * FROM bookings WHERE id = $1;", idx)
 
 		if scanErr := bufferQueryRow.Scan(&id, &sessionId, &customerName, &seatCount, &createdAt); scanErr != nil {
@@ -1010,6 +1041,7 @@ func deleteBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		if scanner.Text() == "y" || scanner.Text() == "Y" {
 
+			// If confirmed, execute the deletion within a transaction.
 			trx, beginErr := db.Begin()
 
 			if beginErr != nil {
@@ -1068,6 +1100,7 @@ func insertMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 	isCompleted := false
 
+	// Loop until the user chooses to go back or exit.
 	for !isCompleted {
 
 		mr.sectionHeader = "INSERT MOVIE"
@@ -1078,6 +1111,7 @@ func insertMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 		}
 
+		// Prompt for and validate the movie title.
 		fmt.Print("Movie Title: ")
 
 		if !scanner.Scan() {
@@ -1100,6 +1134,7 @@ func insertMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 			fmt.Printf("\nGUIDE: Type \"debug back\" to go back to the previous menu.\n\n")
 
+			// Prompt for and validate the movie rating.
 			fmt.Print("Rating: ")
 
 			if !scanner.Scan() {
@@ -1138,6 +1173,7 @@ func insertMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 			fmt.Printf("\nGUIDE: Type \"debug back\" to go back to the previous menu.\n\n")
 
+			// Prompt for and validate the movie duration.
 			fmt.Print("Duration: ")
 
 			if !scanner.Scan() {
@@ -1166,6 +1202,7 @@ func insertMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 		}
 
+		// Insert the validated movie data into the database using a transaction.
 		trx, beginErr := db.Begin()
 
 		if beginErr != nil {
@@ -1219,6 +1256,7 @@ func insertTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 	isCompleted := false
 
+	// Loop until the user chooses to go back or exit.
 	for !isCompleted {
 
 		mr.sectionHeader = "INSERT THEATER"
@@ -1229,6 +1267,7 @@ func insertTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 		}
 
+		// Prompt for and validate the theater total capacity.
 		fmt.Print("Total Capacity: ")
 
 		if !scanner.Scan() {
@@ -1257,6 +1296,7 @@ func insertTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 		for !isIsActiveValid {
 
+			// Prompt for and validate the theater's active status.
 			fmt.Print("Is currently active? (y/n): ")
 
 			if !scanner.Scan() {
@@ -1283,6 +1323,7 @@ func insertTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 		}
 
+		// Insert the validated theater data into the database using a transaction.
 		trx, beginErr := db.Begin()
 
 		if beginErr != nil {
@@ -1335,6 +1376,7 @@ func insertSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 	var convErr error
 	isCompleted := false
 
+	// Fetch existing movie and theater IDs to validate foreign key constraints.
 	moviesIdSlice, getMoviesIdErr := getMoviesId(db)
 
 	if getMoviesIdErr != nil {
@@ -1351,6 +1393,7 @@ func insertSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 	}
 
+	// Loop until a new session record is successfully inserted.
 	for !isCompleted {
 
 		mr.sectionHeader = "INSERT SESSION"
@@ -1360,6 +1403,8 @@ func insertSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 			return renderMenuInsertErr
 
 		}
+
+		// Prompt for and validate the movie ID.
 		fmt.Print("Movie ID: ")
 
 		if !scanner.Scan() {
@@ -1400,6 +1445,7 @@ func insertSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 		for !isTheaterIdValid {
 
+			// Prompt for and validate the theater ID.
 			fmt.Print("Theater ID: ")
 
 			if !scanner.Scan() {
@@ -1444,6 +1490,7 @@ func insertSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 		for !isSeatCountValid {
 
+			// Prompt for and validate the total seat count.
 			fmt.Print("Seat(s) Count: ")
 
 			if !scanner.Scan() {
@@ -1476,6 +1523,7 @@ func insertSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 		for !isActiveValid {
 
+			// Prompt for and validate the theater's active status.
 			fmt.Print("Is currently active? (y/n): ")
 
 			if !scanner.Scan() {
@@ -1504,6 +1552,7 @@ func insertSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 		}
 
+		// Insert the validated session data into the database using a transaction.
 		trx, beginErr := db.Begin()
 
 		if beginErr != nil {
@@ -1555,6 +1604,7 @@ func insertBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp,
 	var sessionId, customerName, seatCount string
 	var convErr error
 
+	// Fetch existing session IDs to validate foreign key constraints.
 	sessionsIdSlice, getSessionsIdErr := getSessionsId(db)
 
 	if getSessionsIdErr != nil {
@@ -1565,6 +1615,7 @@ func insertBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp,
 
 	isCompleted := false
 
+	// Loop until a new booking record is successfully inserted.
 	for !isCompleted {
 
 		mr.sectionHeader = "INSERT BOOKING"
@@ -1575,6 +1626,7 @@ func insertBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp,
 
 		}
 
+		// Prompt for and validate the session ID.
 		fmt.Print("Session ID: ")
 
 		if !scanner.Scan() {
@@ -1615,6 +1667,7 @@ func insertBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp,
 
 		for !isCustomerNameValid {
 
+			// Prompt for and validate the customer name.
 			fmt.Print("Customer Name: ")
 
 			if !scanner.Scan() {
@@ -1651,6 +1704,7 @@ func insertBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp,
 
 		for !isSeatCountValid {
 
+			// Prompt for and validate the total seat count.
 			fmt.Print("Seat(s) Count: ")
 
 			if !scanner.Scan() {
@@ -1691,6 +1745,7 @@ func insertBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp,
 
 		}
 
+		// Insert the validated booking data into the database using a transaction.
 		trx, beginErr := db.Begin()
 
 		if beginErr != nil {
@@ -1741,6 +1796,7 @@ func listMovies(db *sql.DB) (map[int]map[string]string, []int, error) {
 
 	keys := make([]int, 0)
 
+	// Query all records from the movies table.
 	bufferRows, queryErr := db.Query("SELECT * FROM movies;")
 
 	if queryErr != nil {
@@ -1753,6 +1809,7 @@ func listMovies(db *sql.DB) (map[int]map[string]string, []int, error) {
 	var title, rating, duration string
 	resultMap := make(map[int]map[string]string)
 
+	// Iterate through the rows and store movie details in a map keyed by ID.
 	for bufferRows.Next() {
 
 		if scanErr := bufferRows.Scan(&id, &title, &rating, &duration); scanErr != nil {
@@ -1779,6 +1836,7 @@ func listTheaters(db *sql.DB) (map[int]map[string]string, []int, error) {
 
 	keys := make([]int, 0)
 
+	// Query all records from the theaters table.
 	bufferRows, queryErr := db.Query("SELECT * FROM theaters;")
 
 	if queryErr != nil {
@@ -1791,6 +1849,7 @@ func listTheaters(db *sql.DB) (map[int]map[string]string, []int, error) {
 	var totalCapacity, isActive string
 	resultMap := make(map[int]map[string]string)
 
+	// Iterate through the rows and store theater details in a map keyed by ID.
 	for bufferRows.Next() {
 
 		if scanErr := bufferRows.Scan(&id, &totalCapacity, &isActive); scanErr != nil {
@@ -1816,6 +1875,7 @@ func listSessions(db *sql.DB) (map[int]map[string]string, []int, error) {
 
 	keys := make([]int, 0)
 
+	// Query all records from the sessions table.
 	bufferRows, queryErr := db.Query("SELECT * FROM sessions;")
 
 	if queryErr != nil {
@@ -1828,6 +1888,7 @@ func listSessions(db *sql.DB) (map[int]map[string]string, []int, error) {
 	var movieId, theaterId, availableSeats, isActive string
 	resultMap := make(map[int]map[string]string)
 
+	// Iterate through the rows and store session details in a map keyed by ID.
 	for bufferRows.Next() {
 
 		if scanErr := bufferRows.Scan(&id, &movieId, &theaterId, &availableSeats, &isActive); scanErr != nil {
@@ -1855,6 +1916,7 @@ func listBookings(db *sql.DB) (map[int]map[string]string, []int, error) {
 
 	keys := make([]int, 0)
 
+	// Query all records from the bookings table.
 	bufferRows, queryErr := db.Query("SELECT * FROM bookings;")
 
 	if queryErr != nil {
@@ -1867,6 +1929,7 @@ func listBookings(db *sql.DB) (map[int]map[string]string, []int, error) {
 	var sessionId, customerName, seatCount, createdAt string
 	resultMap := make(map[int]map[string]string)
 
+	// Iterate through the rows and store booking details in a map keyed by ID.
 	for bufferRows.Next() {
 
 		if scanErr := bufferRows.Scan(&id, &sessionId, &customerName, &seatCount, &createdAt); scanErr != nil {
@@ -1900,6 +1963,7 @@ func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 	var id, idx int
 	var convErr error
 
+	// Fetch the current list of movies from the database.
 	mr.columnRows, mr.columnRowsKeys, mr.listColumnsErr = listMovies(db)
 
 	if mr.listColumnsErr != nil {
@@ -1926,6 +1990,7 @@ func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 	}
 
+	// Sort the column names alphabetically for consistent display.
 	slices.SortFunc(keys, func(a, b string) int {
 
 		return cmp.Compare(a, b)
@@ -1934,6 +1999,7 @@ func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 	isCompleted := false
 
+	// Loop until a valid movie ID is selected for update.
 	for !isCompleted {
 
 		mr.sectionHeader = "UPDATE MOVIE"
@@ -1962,6 +2028,7 @@ func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 		}
 
+		// Handle filtering or resetting the movie list display.
 		if strings.HasPrefix(userInput, "filter") {
 
 			bufferUserInput := strings.Split(userInput, " ")
@@ -2000,6 +2067,7 @@ func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 		mr.additionalMsg = ""
 
+		// Validate the selected movie ID.
 		idx, convErr = strconv.Atoi(userInput)
 
 		if convErr != nil {
@@ -2024,6 +2092,7 @@ func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 	mr.debugMsg = ""
 
+	// Loop to allow the user to pick which column of the selected movie to update.
 	for isColumnPicking {
 
 		if clearScreenErr := clearScreen(); clearScreenErr != nil {
@@ -2078,6 +2147,7 @@ func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 		}
 
+		// Route to the specific column update logic based on user selection.
 		switch userInput {
 
 		case "1":
@@ -2138,6 +2208,7 @@ func updateTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	mr.debugMsg = debugMsg
 
+	// Fetch the current list of theaters from the database.
 	mr.columnRows, _, mr.listColumnsErr = listTheaters(db)
 
 	if mr.listColumnsErr != nil {
@@ -2164,6 +2235,7 @@ func updateTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	}
 
+	// Sort the column names alphabetically for consistent display.
 	slices.SortFunc(keys, func(a, b string) int {
 
 		return cmp.Compare(a, b)
@@ -2172,6 +2244,7 @@ func updateTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	isCompleted := false
 
+	// Loop until a valid theater ID is selected for update.
 	for !isCompleted {
 
 		mr.sectionHeader = "UPDATE THEATER"
@@ -2200,6 +2273,7 @@ func updateTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
+		// Validate the selected theater ID.
 		idx, convErr = strconv.Atoi(userInput)
 
 		if convErr != nil {
@@ -2224,6 +2298,7 @@ func updateTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	mr.debugMsg = ""
 
+	// Loop to allow the user to pick which column of the selected theater to update.
 	for isColumnPicking {
 
 		if clearScreenErr := clearScreen(); clearScreenErr != nil {
@@ -2278,6 +2353,7 @@ func updateTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
+		// Route to the specific column update logic based on user selection.
 		switch userInput {
 
 		case "1":
@@ -2326,6 +2402,7 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	mr.debugMsg = debugMsg
 
+	// Fetch the current list of sessions from the database.
 	mr.columnRows, _, mr.listColumnsErr = listSessions(db)
 
 	if mr.listColumnsErr != nil {
@@ -2352,6 +2429,7 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	}
 
+	// Sort the column names alphabetically for consistent display.
 	slices.SortFunc(keys, func(a, b string) int {
 
 		return cmp.Compare(a, b)
@@ -2360,6 +2438,7 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	isCompleted := false
 
+	// Loop until a valid session ID is selected for update.
 	for !isCompleted {
 
 		mr.sectionHeader = "UPDATE SESSION"
@@ -2388,6 +2467,7 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
+		// Validate the selected session ID.
 		idx, convErr = strconv.Atoi(userInput)
 
 		if convErr != nil {
@@ -2412,6 +2492,7 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	mr.debugMsg = ""
 
+	// Loop to allow the user to pick which column of the selected session to update.
 	for isColumnPicking {
 
 		if clearScreenErr := clearScreen(); clearScreenErr != nil {
@@ -2466,6 +2547,7 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
+		// Route to the specific column update logic based on user selection.
 		switch userInput {
 
 		case "1":
@@ -2535,6 +2617,7 @@ func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 	mr.additionalMsg = ""
 	mr.debugMsg = debugMsg
 
+	// Fetch the current list of bookings from the database.
 	mr.columnRows, mr.columnRowsKeys, mr.listColumnsErr = listBookings(db)
 
 	if mr.listColumnsErr != nil {
@@ -2561,6 +2644,7 @@ func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	}
 
+	// Sort the column names alphabetically for consistent display.
 	slices.SortFunc(keys, func(a, b string) int {
 
 		return cmp.Compare(a, b)
@@ -2569,6 +2653,7 @@ func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	isCompleted := false
 
+	// Loop until a valid booking ID is selected for update.
 	for !isCompleted {
 
 		mr.sectionHeader = "UPDATE BOOKING"
@@ -2597,6 +2682,7 @@ func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
+		// Handle filtering or resetting the booking list display.
 		if strings.HasPrefix(userInput, "filter") {
 
 			bufferUserInput := strings.Split(userInput, " ")
@@ -2635,6 +2721,7 @@ func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		mr.additionalMsg = ""
 
+		// Validate the selected booking ID.
 		idx, convErr = strconv.Atoi(userInput)
 
 		if convErr != nil {
@@ -2659,6 +2746,7 @@ func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	mr.debugMsg = ""
 
+	// Loop to allow the user to pick which column of the selected booking to update.
 	for isColumnPicking {
 
 		if clearScreenErr := clearScreen(); clearScreenErr != nil {
@@ -2713,6 +2801,7 @@ func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
+		// Route to the specific column update logic based on user selection.
 		switch userInput {
 
 		case "1":
@@ -2777,6 +2866,7 @@ func convertedListMovies(listMovies map[int]map[string]string) string {
 
 	var result string
 
+	// Format each movie record into a readable string.
 	for id, movie := range listMovies {
 
 		result += fmt.Sprintf("ID\t\t: %d\nTitle\t\t: %s\nRating\t\t: %s\nDuration\t: %s\n\n", id, movie["title"], movie["rating"], movie["duration"])
@@ -2791,6 +2881,7 @@ func convertedListTheaters(listTheaters map[int]map[string]string) string {
 
 	var result string
 
+	// Format each theater record into a readable string.
 	for id, theater := range listTheaters {
 
 		result += fmt.Sprintf("ID\t\t: %d\nTotal Capacity\t: %s\nIs Active\t: %s\n\n", id, theater["total_capacity"], theater["is_active"])
@@ -2805,6 +2896,7 @@ func convertedListSessions(listSessions map[int]map[string]string) string {
 
 	var result string
 
+	// Format each session record into a readable string.
 	for id, session := range listSessions {
 
 		result += fmt.Sprintf("ID\t\t: %d\nMovie ID\t: %s\nTheater ID\t: %s\nAvailable Seats\t: %s\nIs Active\t: %s\n\n", id, session["movie_id"], session["theater_id"], session["available_seats"], session["is_active"])
@@ -2819,6 +2911,7 @@ func convertedListBookings(listBookings map[int]map[string]string) string {
 
 	var result string
 
+	// Format each booking record into a readable string.
 	for id, booking := range listBookings {
 
 		result += fmt.Sprintf("ID\t\t: %d\nSession ID\t: %s\nCustomer Name\t: %s\nSeat Count\t: %s\nCreated At\t: %s\n\n", id, booking["session_id"], booking["customer_name"], booking["seat_count"], booking["created_at"])
@@ -2831,6 +2924,7 @@ func convertedListBookings(listBookings map[int]map[string]string) string {
 
 func mainMenuList() []string {
 
+	// Return the labels for the main menu options.
 	listSlice := []string{
 		"Administration",
 		"Ticket Booking",
@@ -2843,6 +2937,7 @@ func mainMenuList() []string {
 
 func adminMenuList() []string {
 
+	// Return the labels for the administration menu options.
 	listSlice := []string{
 		"Delete",
 		"Insert",
@@ -2858,6 +2953,7 @@ func adminMenuList() []string {
 
 func tablesList() []string {
 
+	// Return the labels for the database tables available for management.
 	listSlice := []string{
 		"Movie",
 		"Theater",
@@ -2877,6 +2973,7 @@ func movieRowsFilter(db *sql.DB, bufferUserInput []string, movieRows map[int]map
 	keyword := strings.ToLower(bufferUserInput[1])
 	filteredMovieRows := make(map[int]map[string]string)
 
+	// Iterate through movie keys and filter by title matching the keyword.
 	for _, idx := range movieRowsKeys {
 
 		titleTemp := strings.ToLower(movieRows[idx]["title"])
@@ -2901,6 +2998,7 @@ func movieRowsFilter(db *sql.DB, bufferUserInput []string, movieRows map[int]map
 
 	}
 
+	// Convert the filtered results to a string and return with a header message.
 	convertedMovieRows := convertedListMovies(filteredMovieRows)
 
 	additionalMsg := fmt.Sprintf("Filter result for \"%s\":\n\n", keyword)
@@ -2911,12 +3009,11 @@ func movieRowsFilter(db *sql.DB, bufferUserInput []string, movieRows map[int]map
 
 func bookingRowsFilter(db *sql.DB, bufferUserInput []string, bookingRows map[int]map[string]string, bookingRowsKeys []int) (string, string, error) {
 
-	// Continue from here
-
 	var id, sessionId, customerName, seatCount, createdAt string
 	keyword := strings.ToLower(bufferUserInput[1])
 	filteredBookingRows := make(map[int]map[string]string)
 
+	// Iterate through booking keys and filter by customer name matching the keyword.
 	for _, idx := range bookingRowsKeys {
 
 		customerTemp := strings.ToLower(bookingRows[idx]["customer_name"])
@@ -2942,6 +3039,7 @@ func bookingRowsFilter(db *sql.DB, bufferUserInput []string, bookingRows map[int
 
 	}
 
+	// Convert the filtered results to a string and return with a header message.
 	convertedBookingRows := convertedListMovies(filteredBookingRows)
 
 	additionalMsg := fmt.Sprintf("Filter result for \"%s\":\n\n", keyword)
@@ -2952,6 +3050,7 @@ func bookingRowsFilter(db *sql.DB, bufferUserInput []string, bookingRows map[int
 
 func getMoviesId(db *sql.DB) ([]int, error) {
 
+	// Query all IDs from the movies table.
 	bufferRows, queryErr := db.Query("SELECT id FROM movies;")
 
 	if queryErr != nil {
@@ -2963,6 +3062,7 @@ func getMoviesId(db *sql.DB) ([]int, error) {
 	var id int
 	var result []int
 
+	// Scan each row and append the ID to the result slice.
 	for bufferRows.Next() {
 
 		if scanErr := bufferRows.Scan(&id); scanErr != nil {
@@ -2979,6 +3079,7 @@ func getMoviesId(db *sql.DB) ([]int, error) {
 
 func getTheatersId(db *sql.DB) ([]int, error) {
 
+	// Query all IDs from the theaters table.
 	bufferRows, queryErr := db.Query("SELECT id FROM theaters;")
 
 	if queryErr != nil {
@@ -2990,6 +3091,7 @@ func getTheatersId(db *sql.DB) ([]int, error) {
 	var id int
 	var result []int
 
+	// Scan each row and append the ID to the result slice.
 	for bufferRows.Next() {
 
 		if scanErr := bufferRows.Scan(&id); scanErr != nil {
@@ -3006,6 +3108,7 @@ func getTheatersId(db *sql.DB) ([]int, error) {
 
 func getSessionsId(db *sql.DB) ([]int, error) {
 
+	// Query all IDs from the sessions table.
 	bufferRows, queryErr := db.Query("SELECT id FROM sessions;")
 
 	if queryErr != nil {
@@ -3017,6 +3120,7 @@ func getSessionsId(db *sql.DB) ([]int, error) {
 	var id int
 	var result []int
 
+	// Scan each row and append the ID to the result slice.
 	for bufferRows.Next() {
 
 		if scanErr := bufferRows.Scan(&id); scanErr != nil {
@@ -3035,6 +3139,7 @@ func listMoviesColumns(db *sql.DB) (map[string]string, error) {
 
 	columns := make(map[string]string, 0)
 
+	// Query column names and data types for the movies table from the information schema.
 	bufferRows, queryErr := db.Query("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'movies' AND column_name != 'id';")
 
 	if queryErr != nil {
@@ -3043,6 +3148,7 @@ func listMoviesColumns(db *sql.DB) (map[string]string, error) {
 
 	}
 
+	// Store the column metadata in a map.
 	for bufferRows.Next() {
 
 		var columnName, columnType string
@@ -3065,6 +3171,7 @@ func listTheatersColumns(db *sql.DB) (map[string]string, error) {
 
 	columns := make(map[string]string, 0)
 
+	// Query column names and data types for the theaters table from the information schema.
 	bufferRows, queryErr := db.Query("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'theaters' AND column_name != 'id';")
 
 	if queryErr != nil {
@@ -3073,6 +3180,7 @@ func listTheatersColumns(db *sql.DB) (map[string]string, error) {
 
 	}
 
+	// Store the column metadata in a map.
 	for bufferRows.Next() {
 
 		var columnName, columnType string
@@ -3095,6 +3203,7 @@ func listSessionsColumns(db *sql.DB) (map[string]string, error) {
 
 	columns := make(map[string]string, 0)
 
+	// Query column names and data types for the sessions table from the information schema.
 	bufferRows, queryErr := db.Query("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'sessions' AND column_name != 'id';")
 
 	if queryErr != nil {
@@ -3103,6 +3212,7 @@ func listSessionsColumns(db *sql.DB) (map[string]string, error) {
 
 	}
 
+	// Store the column metadata in a map.
 	for bufferRows.Next() {
 
 		var columnName, columnType string
@@ -3125,6 +3235,7 @@ func listBookingsColumns(db *sql.DB) (map[string]string, error) {
 
 	columns := make(map[string]string, 0)
 
+	// Query column names and data types for the bookings table from the information schema.
 	bufferRows, queryErr := db.Query("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'bookings' AND column_name != 'id';")
 
 	if queryErr != nil {
@@ -3133,6 +3244,7 @@ func listBookingsColumns(db *sql.DB) (map[string]string, error) {
 
 	}
 
+	// Store the column metadata in a map.
 	for bufferRows.Next() {
 
 		var columnName, columnType string
@@ -3155,6 +3267,7 @@ func updateMovieColumn(db *sql.DB, scanner *bufio.Scanner, column map[string]str
 
 	columnType := strings.ToLower(column[columnName])
 
+	// Prompt for the new value and validate it based on the column's data type.
 	fmt.Printf("\nEnter new value for column %s: ", columnName)
 
 	if !scanner.Scan() {
@@ -3165,6 +3278,7 @@ func updateMovieColumn(db *sql.DB, scanner *bufio.Scanner, column map[string]str
 
 	newValue := strings.TrimSpace(scanner.Text())
 
+	// Handle integer, text, and float types with specific validation and transaction calls.
 	if strings.Contains(columnType, "int") {
 
 		if _, convErr := strconv.Atoi(newValue); convErr != nil || newValue == "" {
@@ -3221,6 +3335,7 @@ func updateTheaterColumn(db *sql.DB, scanner *bufio.Scanner, column map[string]s
 
 	columnType := strings.ToLower(column[columnName])
 
+	// Prompt for the new value and validate it based on the column's data type.
 	fmt.Printf("\nEnter new value for column %s: ", columnName)
 
 	if !scanner.Scan() {
@@ -3231,6 +3346,7 @@ func updateTheaterColumn(db *sql.DB, scanner *bufio.Scanner, column map[string]s
 
 	newValue := strings.TrimSpace(scanner.Text())
 
+	// Handle integer and boolean types with specific transaction calls.
 	if strings.Contains(columnType, "int") {
 
 		if _, convErr := strconv.Atoi(newValue); convErr != nil || newValue == "" {
@@ -3269,6 +3385,7 @@ func updateSessionColumn(db *sql.DB, scanner *bufio.Scanner, column map[string]s
 
 	columnType := strings.ToLower(column[columnName])
 
+	// Prompt for the new value and validate it based on the column's data type.
 	fmt.Printf("\nEnter new value for column %s: ", columnName)
 
 	if !scanner.Scan() {
@@ -3279,6 +3396,7 @@ func updateSessionColumn(db *sql.DB, scanner *bufio.Scanner, column map[string]s
 
 	newValue := strings.TrimSpace(scanner.Text())
 
+	// Handle integer and boolean types with specific validation and transaction calls.
 	if strings.Contains(columnType, "int") {
 
 		if _, convErr := strconv.Atoi(newValue); convErr != nil || newValue == "" {
@@ -3317,6 +3435,7 @@ func updateBookingColumn(db *sql.DB, scanner *bufio.Scanner, column map[string]s
 
 	columnType := strings.ToLower(column[columnName])
 
+	// Prompt for the new value and validate it based on the column's data type.
 	fmt.Printf("\nEnter new value for column %s: ", columnName)
 
 	if !scanner.Scan() {
@@ -3327,6 +3446,7 @@ func updateBookingColumn(db *sql.DB, scanner *bufio.Scanner, column map[string]s
 
 	newValue := strings.TrimSpace(scanner.Text())
 
+	// Handle integer and timestamp types with specific validation and transaction calls.
 	if strings.Contains(columnType, "int") {
 
 		if _, convErr := strconv.Atoi(newValue); convErr != nil || newValue == "" {
@@ -3363,6 +3483,7 @@ func updateBookingColumn(db *sql.DB, scanner *bufio.Scanner, column map[string]s
 
 func updateMovieColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName string, newValue string, idx int) string {
 
+	// Start a transaction to update a specific movie column.
 	trx, beginErr := db.Begin()
 
 	if beginErr != nil {
@@ -3371,6 +3492,7 @@ func updateMovieColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName strin
 
 	}
 
+	// Execute the update query and handle potential rollbacks.
 	query := fmt.Sprintf("UPDATE movies SET %s = $1 WHERE id = $2;", columnName)
 
 	_, execErr := trx.Exec(query, newValue, idx)
@@ -3387,6 +3509,7 @@ func updateMovieColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName strin
 
 	}
 
+	// Commit the transaction and wait for user confirmation.
 	if commitErr := trx.Commit(); commitErr != nil {
 
 		return "ERROR: Something wrong with the transaction commit."
@@ -3409,6 +3532,7 @@ func updateMovieColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName strin
 
 func updateTheaterColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName string, newValue string, idx int) string {
 
+	// Start a transaction to update a specific theater column.
 	trx, beginErr := db.Begin()
 
 	if beginErr != nil {
@@ -3417,6 +3541,7 @@ func updateTheaterColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName str
 
 	}
 
+	// Execute the update query and handle potential rollbacks.
 	query := fmt.Sprintf("UPDATE theaters SET %s = $1 WHERE id = $2;", columnName)
 
 	_, execErr := trx.Exec(query, newValue, idx)
@@ -3433,6 +3558,7 @@ func updateTheaterColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName str
 
 	}
 
+	// Commit the transaction and wait for user confirmation.
 	if commitErr := trx.Commit(); commitErr != nil {
 
 		return "ERROR: Something wrong with the transaction commit."
@@ -3455,6 +3581,7 @@ func updateTheaterColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName str
 
 func updateSessionColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName string, newValue string, idx int) string {
 
+	// Start a transaction to update a specific session column.
 	trx, beginErr := db.Begin()
 
 	if beginErr != nil {
@@ -3463,6 +3590,7 @@ func updateSessionColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName str
 
 	}
 
+	// Execute the update query and handle potential rollbacks.
 	query := fmt.Sprintf("UPDATE sessions SET %s = $1 WHERE id = $2;", columnName)
 
 	_, execErr := trx.Exec(query, newValue, idx)
@@ -3479,6 +3607,7 @@ func updateSessionColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName str
 
 	}
 
+	// Commit the transaction and wait for user confirmation.
 	if commitErr := trx.Commit(); commitErr != nil {
 
 		return "ERROR: Something wrong with the transaction commit."
@@ -3501,6 +3630,7 @@ func updateSessionColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName str
 
 func updateBookingColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName string, newValue string, idx int) string {
 
+	// Start a transaction to update a specific booking column.
 	trx, beginErr := db.Begin()
 
 	if beginErr != nil {
@@ -3509,6 +3639,7 @@ func updateBookingColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName str
 
 	}
 
+	// Execute the update query and handle potential rollbacks.
 	query := fmt.Sprintf("UPDATE bookings SET %s = $1 WHERE id = $2;", columnName)
 
 	_, execErr := trx.Exec(query, newValue, idx)
@@ -3525,6 +3656,7 @@ func updateBookingColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName str
 
 	}
 
+	// Commit the transaction and wait for user confirmation.
 	if commitErr := trx.Commit(); commitErr != nil {
 
 		return "ERROR: Something wrong with the transaction commit."
