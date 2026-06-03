@@ -12,28 +12,28 @@ import (
 	"time"
 )
 
-func deleteMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg string) (string, error) {
+func deleteMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) (Signal, error) {
 
-	isCompleted := false
+	var returnSignal Signal
 
 	// Loop until the user chooses to go back or exit.
-	for !isCompleted {
+	for {
 
 		// Render the delete menu with the list of available tables.
 		mr.sectionHeader = "DELETE MENU"
 		mr.menuSlice = tablesList()
-		mr.debugMsg = debugMsg
+		mr.debugMsg = ""
 
 		if renderMenuErr := mr.renderMenu(); renderMenuErr != nil {
 
-			return "", renderMenuErr
+			return returnSignal, renderMenuErr
 
 		}
 
 		// Handle user input to navigate to specific table deletion or exit.
 		if !scanner.Scan() {
 
-			return "", scanner.Err()
+			return returnSignal, scanner.Err()
 
 		}
 
@@ -43,11 +43,9 @@ func deleteMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 		case "1":
 
-			deleteMovieErr := deleteMovie(db, scanner, mr, debugMsg)
+			if deleteMovieErr := deleteMovie(db, scanner, mr); deleteMovieErr != nil {
 
-			if deleteMovieErr != nil {
-
-				return "", deleteMovieErr
+				return returnSignal, deleteMovieErr
 
 			}
 
@@ -55,9 +53,9 @@ func deleteMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 		case "2":
 
-			if deleteTheaterErr := deleteTheater(db, scanner, mr, debugMsg); deleteTheaterErr != nil {
+			if deleteTheaterErr := deleteTheater(db, scanner, mr); deleteTheaterErr != nil {
 
-				return "", deleteTheaterErr
+				return returnSignal, deleteTheaterErr
 
 			}
 
@@ -65,9 +63,9 @@ func deleteMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 		case "3":
 
-			if deleteSessionErr := deleteSession(db, scanner, mr, debugMsg); deleteSessionErr != nil {
+			if deleteSessionErr := deleteSession(db, scanner, mr); deleteSessionErr != nil {
 
-				return "", deleteSessionErr
+				return returnSignal, deleteSessionErr
 
 			}
 
@@ -75,9 +73,9 @@ func deleteMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 		case "4":
 
-			if deleteBookingErr := deleteBooking(db, scanner, mr, debugMsg); deleteBookingErr != nil {
+			if deleteBookingErr := deleteBooking(db, scanner, mr); deleteBookingErr != nil {
 
-				return "", deleteBookingErr
+				return returnSignal, deleteBookingErr
 
 			}
 
@@ -85,15 +83,19 @@ func deleteMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 		case "5":
 
-			return "back", nil
+			returnSignal = Back
+
+			return returnSignal, nil
 
 		case "6":
 
-			return "exit", nil
+			returnSignal = Exit
+
+			return returnSignal, nil
 
 		default:
 
-			debugMsg = "ERROR: Invalid input. Please try again."
+			mr.debugMsg = "ERROR: Invalid input. Please try again."
 
 			continue
 
@@ -101,31 +103,30 @@ func deleteMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 	}
 
-	return "exit", nil
 }
 
-func insertMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *menuRenderer, debugMsg string) (string, error) {
+func insertMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *menuRenderer) (Signal, error) {
 
-	isCompleted := false
+	var returnSignal Signal
 
 	// Loop until the user chooses to go back or exit.
-	for !isCompleted {
+	for {
 
 		// Render the insert menu with the list of available tables.
 		mr.sectionHeader = "INSERT MENU"
 		mr.menuSlice = tablesList()
-		mr.debugMsg = debugMsg
+		mr.debugMsg = ""
 
 		// Handle user input to navigate to specific table insertion or exit.
 		if renderMenuErr := mr.renderMenu(); renderMenuErr != nil {
 
-			return "", renderMenuErr
+			return returnSignal, renderMenuErr
 
 		}
 
 		if !scanner.Scan() {
 
-			return "", scanner.Err()
+			return returnSignal, scanner.Err()
 
 		}
 
@@ -137,7 +138,7 @@ func insertMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr
 
 			if insertMovieErr := insertMovie(db, scanner, mr); insertMovieErr != nil {
 
-				return "", insertMovieErr
+				return returnSignal, insertMovieErr
 
 			}
 
@@ -147,7 +148,7 @@ func insertMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr
 
 			if insertTheaterErr := insertTheater(db, scanner, mr); insertTheaterErr != nil {
 
-				return "", insertTheaterErr
+				return returnSignal, insertTheaterErr
 
 			}
 
@@ -157,7 +158,7 @@ func insertMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr
 
 			if insertSessionErr := insertSession(db, scanner, mr); insertSessionErr != nil {
 
-				return "", insertSessionErr
+				return returnSignal, insertSessionErr
 
 			}
 
@@ -167,7 +168,7 @@ func insertMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr
 
 			if insertBookingErr := insertBooking(db, scanner, nameRegex, mr); insertBookingErr != nil {
 
-				return "", insertBookingErr
+				return returnSignal, insertBookingErr
 
 			}
 
@@ -175,15 +176,19 @@ func insertMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr
 
 		case "5":
 
-			return "back", nil
+			returnSignal = Back
+
+			return returnSignal, nil
 
 		case "6":
 
-			return "exit", nil
+			returnSignal = Exit
+
+			return returnSignal, nil
 
 		default:
 
-			debugMsg = "ERROR: Invalid input. Please try again."
+			mr.debugMsg = "ERROR: Invalid input. Please try again."
 
 			continue
 
@@ -191,32 +196,30 @@ func insertMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr
 
 	}
 
-	return "exit", nil
-
 }
 
-func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg string) (string, error) {
+func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) (Signal, error) {
 
-	isCompleted := false
+	var returnSignal Signal
 
 	// Loop until the user chooses to go back or exit.
-	for !isCompleted {
+	for {
 
 		// Render the list menu with the list of available tables.
 		mr.sectionHeader = "LIST MENU"
 		mr.menuSlice = tablesList()
-		mr.debugMsg = debugMsg
+		mr.debugMsg = ""
 
 		// Handle user input to fetch and display records for the selected table.
 		if renderMenuErr := mr.renderMenu(); renderMenuErr != nil {
 
-			return "", renderMenuErr
+			return returnSignal, renderMenuErr
 
 		}
 
 		if !scanner.Scan() {
 
-			return "", scanner.Err()
+			return returnSignal, scanner.Err()
 
 		}
 
@@ -230,7 +233,7 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 			if listMoviesErr != nil {
 
-				return "", listMoviesErr
+				return returnSignal, listMoviesErr
 
 			}
 
@@ -238,7 +241,7 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 			if err := clearScreen(); err != nil {
 
-				return "", err
+				return returnSignal, err
 
 			}
 
@@ -248,7 +251,7 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 			if !scanner.Scan() {
 
-				return "", scanner.Err()
+				return returnSignal, scanner.Err()
 
 			}
 
@@ -260,7 +263,7 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 			if listTheatersErr != nil {
 
-				return "", listTheatersErr
+				return returnSignal, listTheatersErr
 
 			}
 
@@ -268,7 +271,7 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 			if err := clearScreen(); err != nil {
 
-				return "", err
+				return returnSignal, err
 
 			}
 
@@ -278,7 +281,7 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 			if !scanner.Scan() {
 
-				return "", scanner.Err()
+				return returnSignal, scanner.Err()
 
 			}
 
@@ -290,7 +293,7 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 			if listSessionsErr != nil {
 
-				return "", listSessionsErr
+				return returnSignal, listSessionsErr
 
 			}
 
@@ -298,7 +301,7 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 			if err := clearScreen(); err != nil {
 
-				return "", err
+				return returnSignal, err
 
 			}
 
@@ -308,7 +311,7 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 			if !scanner.Scan() {
 
-				return "", scanner.Err()
+				return returnSignal, scanner.Err()
 
 			}
 
@@ -320,7 +323,7 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 			if listBookingsErr != nil {
 
-				return "", listBookingsErr
+				return returnSignal, listBookingsErr
 
 			}
 
@@ -328,7 +331,7 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 			if err := clearScreen(); err != nil {
 
-				return "", err
+				return returnSignal, err
 
 			}
 
@@ -338,7 +341,7 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 			if !scanner.Scan() {
 
-				return "", scanner.Err()
+				return returnSignal, scanner.Err()
 
 			}
 
@@ -346,15 +349,19 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 		case "5":
 
-			return "back", nil
+			returnSignal = Back
+
+			return returnSignal, nil
 
 		case "6":
 
-			return "exit", nil
+			returnSignal = Exit
+
+			return returnSignal, nil
 
 		default:
 
-			debugMsg = "ERROR: Invalid input. Please try again."
+			mr.debugMsg = "ERROR: Invalid input. Please try again."
 
 			continue
 
@@ -362,31 +369,31 @@ func listMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg str
 
 	}
 
-	return "exit", nil
-
 }
 
-func updateMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg string) (string, error) {
+func updateMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) (Signal, error) {
 
-	isCompleted := false
+	var returnSignal Signal
 
 	// Loop until the user chooses to go back or exit.
-	for !isCompleted {
+	for {
 
 		// Render the update menu with the list of available tables.
 		mr.sectionHeader = "UPDATE MENU"
 		mr.menuSlice = tablesList()
-		mr.debugMsg = debugMsg
+		mr.debugMsg = ""
 
 		if renderMenuErr := mr.renderMenu(); renderMenuErr != nil {
 
-			return "", renderMenuErr
+			return returnSignal, renderMenuErr
 
 		}
 
 		// Handle user input to navigate to specific table updates or exit.
 		if !scanner.Scan() {
-			return "", scanner.Err()
+
+			return returnSignal, scanner.Err()
+
 		}
 
 		userInput := scanner.Text()
@@ -395,9 +402,9 @@ func updateMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 		case "1":
 
-			if updateMovieErr := updateMovie(db, scanner, mr, debugMsg); updateMovieErr != nil {
+			if updateMovieErr := updateMovie(db, scanner, mr); updateMovieErr != nil {
 
-				return "", updateMovieErr
+				return returnSignal, updateMovieErr
 
 			}
 
@@ -405,9 +412,9 @@ func updateMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 		case "2":
 
-			if updateTheaterErr := updateTheater(db, scanner, mr, debugMsg); updateTheaterErr != nil {
+			if updateTheaterErr := updateTheater(db, scanner, mr); updateTheaterErr != nil {
 
-				return "", updateTheaterErr
+				return returnSignal, updateTheaterErr
 
 			}
 
@@ -415,9 +422,9 @@ func updateMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 		case "3":
 
-			if updateSessionErr := updateSession(db, scanner, mr, debugMsg); updateSessionErr != nil {
+			if updateSessionErr := updateSession(db, scanner, mr); updateSessionErr != nil {
 
-				return "", updateSessionErr
+				return returnSignal, updateSessionErr
 
 			}
 
@@ -425,9 +432,9 @@ func updateMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 		case "4":
 
-			if updateBookingErr := updateBooking(db, scanner, mr, debugMsg); updateBookingErr != nil {
+			if updateBookingErr := updateBooking(db, scanner, mr); updateBookingErr != nil {
 
-				return "", updateBookingErr
+				return returnSignal, updateBookingErr
 
 			}
 
@@ -435,15 +442,19 @@ func updateMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 		case "5":
 
-			return "back", nil
+			returnSignal = Back
+
+			return returnSignal, nil
 
 		case "6":
 
-			return "exit", nil
+			returnSignal = Exit
+
+			return returnSignal, nil
 
 		default:
 
-			debugMsg = "ERROR: Invalid input. Please try again."
+			mr.debugMsg = "ERROR: Invalid input. Please try again."
 
 			continue
 
@@ -451,17 +462,15 @@ func updateMenu(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg s
 
 	}
 
-	return "exit", nil
-
 }
 
-func deleteMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg string) error {
+func deleteMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 	var title, rating, duration, selectedRecord string
 	var id int
 
 	mr.additionalMsg = ""
-	mr.debugMsg = debugMsg
+	mr.debugMsg = ""
 
 	// Fetch the current list of movies from the database.
 	mr.columnRows, mr.columnRowsKeys, mr.listColumnsErr = listMovies(db)
@@ -474,10 +483,8 @@ func deleteMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 	mr.convertedColumnRows = convertedListMovies(mr.columnRows)
 
-	isCompleted := false
-
 	// Loop until a movie is deleted or the user goes back.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "DELETE MOVIE"
 
@@ -609,8 +616,6 @@ func deleteMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 				return commitErr
 			}
 
-			isCompleted = true
-
 			fmt.Printf("\nSUCCESS: Record has been deleted.\n\n")
 
 			fmt.Print("Press Enter to continue..")
@@ -621,6 +626,8 @@ func deleteMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 			}
 
+			return nil
+
 		} else {
 
 			continue
@@ -628,16 +635,14 @@ func deleteMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 		}
 	}
 
-	return nil
-
 }
 
-func deleteTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg string) error {
+func deleteTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 	var totalCapacity, isActive, selectedRecord string
 	var id int
 
-	mr.debugMsg = debugMsg
+	mr.debugMsg = ""
 
 	// Fetch the current list of theaters from the database.
 	mr.columnRows, _, mr.listColumnsErr = listTheaters(db)
@@ -650,10 +655,8 @@ func deleteTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	mr.convertedColumnRows = convertedListTheaters(mr.columnRows)
 
-	isCompleted := false
-
 	// Loop until a theater is deleted or the user goes back.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "DELETE THEATER"
 
@@ -748,8 +751,6 @@ func deleteTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 			}
 
-			isCompleted = true
-
 			fmt.Printf("SUCCESS: Record has been deleted.\n\n")
 
 			fmt.Print("Press Enter to continue..")
@@ -760,24 +761,24 @@ func deleteTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 			}
 
+			return nil
+
 		} else {
 
-			return nil
+			continue
 
 		}
 
 	}
 
-	return nil
-
 }
 
-func deleteSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg string) error {
+func deleteSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 	var movieId, theaterId, availableSeats, isActive, selectedRecord string
 	var id int
 
-	mr.debugMsg = debugMsg
+	mr.debugMsg = ""
 
 	// Fetch the current list of sessions from the database.
 	mr.columnRows, _, mr.listColumnsErr = listSessions(db)
@@ -790,10 +791,8 @@ func deleteSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	mr.convertedColumnRows = convertedListSessions(mr.columnRows)
 
-	isCompleted := false
-
 	// Loop until a session is deleted or the user goes back.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "DELETE SESSION"
 
@@ -888,8 +887,6 @@ func deleteSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 			}
 
-			isCompleted = true
-
 			fmt.Printf("SUCCESS: Record has been deleted.\n\n")
 
 			fmt.Print("Press Enter to continue..")
@@ -900,25 +897,25 @@ func deleteSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 			}
 
+			return nil
+
 		} else {
 
-			return nil
+			continue
 
 		}
 
 	}
 
-	return nil
-
 }
 
-func deleteBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg string) error {
+func deleteBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 	var sessionId, customerName, seatCount, createdAt, selectedRecord string
 	var id int
 
 	mr.additionalMsg = ""
-	mr.debugMsg = debugMsg
+	mr.debugMsg = ""
 
 	// Fetch the current list of bookings from the database.
 	mr.columnRows, mr.columnRowsKeys, mr.listColumnsErr = listBookings(db)
@@ -931,10 +928,8 @@ func deleteBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	mr.convertedColumnRows = convertedListBookings(mr.columnRows)
 
-	isCompleted := false
-
 	// Loop until a booking is deleted or the user goes back.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "DELETE BOOKING"
 
@@ -1070,8 +1065,6 @@ func deleteBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 			}
 
-			isCompleted = true
-
 			fmt.Printf("SUCCESS: Record has been deleted.\n\n")
 
 			fmt.Print("Press Enter to continue..")
@@ -1082,14 +1075,14 @@ func deleteBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 			}
 
+			return nil
+
 		} else {
 
-			return nil
+			continue
 
 		}
 	}
-
-	return nil
 
 }
 
@@ -1098,10 +1091,8 @@ func insertMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 	var movieTitle, rating, duration string
 	var convErr error
 
-	isCompleted := false
-
 	// Loop until the user chooses to go back or exit.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "INSERT MOVIE"
 
@@ -1241,11 +1232,9 @@ func insertMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 		}
 
-		isCompleted = true
+		return nil
 
 	}
-
-	return nil
 
 }
 
@@ -1254,10 +1243,8 @@ func insertTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 	var totalCapacity, isActive string
 	var convErr error
 
-	isCompleted := false
-
 	// Loop until the user chooses to go back or exit.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "INSERT THEATER"
 
@@ -1362,11 +1349,9 @@ func insertTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 		}
 
-		isCompleted = true
+		return nil
 
 	}
-
-	return nil
 
 }
 
@@ -1374,7 +1359,6 @@ func insertSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 	var movieId, theaterId, availableSeats, isActive string
 	var convErr error
-	isCompleted := false
 
 	// Fetch existing movie and theater IDs to validate foreign key constraints.
 	moviesIdSlice, getMoviesIdErr := getMoviesId(db)
@@ -1394,7 +1378,7 @@ func insertSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 	}
 
 	// Loop until a new session record is successfully inserted.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "INSERT SESSION"
 
@@ -1591,11 +1575,9 @@ func insertSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 		}
 
-		isCompleted = true
+		return nil
 
 	}
-
-	return nil
 
 }
 
@@ -1613,10 +1595,8 @@ func insertBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp,
 
 	}
 
-	isCompleted := false
-
 	// Loop until a new booking record is successfully inserted.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "INSERT BOOKING"
 
@@ -1784,11 +1764,9 @@ func insertBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp,
 
 		}
 
-		isCompleted = true
+		return nil
 
 	}
-
-	return nil
 
 }
 
@@ -1953,12 +1931,12 @@ func listBookings(db *sql.DB) (map[int]map[string]string, []int, error) {
 
 }
 
-func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg string) error {
+func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 	var title, rating, duration, selectedRecord, userInput string
 
 	mr.additionalMsg = ""
-	mr.debugMsg = debugMsg
+	mr.debugMsg = ""
 
 	var id, idx int
 	var convErr error
@@ -1997,10 +1975,8 @@ func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 	})
 
-	isCompleted := false
-
 	// Loop until a valid movie ID is selected for update.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "UPDATE MOVIE"
 
@@ -2078,22 +2054,20 @@ func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 		}
 
-		isCompleted = true
-
 		if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
 			return clearScreenErr
 
 		}
 
-	}
+		break
 
-	isColumnPicking := true
+	}
 
 	mr.debugMsg = ""
 
 	// Loop to allow the user to pick which column of the selected movie to update.
-	for isColumnPicking {
+	for {
 
 		if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
@@ -2127,7 +2101,7 @@ func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 		}
 
-		fmt.Printf("\n%s\n\n", debugMsg)
+		fmt.Printf("\n%s\n\n", mr.debugMsg)
 		fmt.Printf("GUIDE: Type \"Back\" to go back to the previous menu.\n\n")
 		fmt.Print("Input column number: ")
 
@@ -2188,25 +2162,21 @@ func updateMovie(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg 
 
 		}
 
-		isColumnPicking = false
+		mr.debugMsg = ""
+
+		return nil
 
 	}
 
-	mr.debugMsg = ""
-
-	return nil
-
 }
 
-// Checkpoint
-
-func updateTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg string) error {
+func updateTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 	var totalCapacity, isActive, selectedRecord, userInput string
 	var id, idx int
 	var convErr error
 
-	mr.debugMsg = debugMsg
+	mr.debugMsg = ""
 
 	// Fetch the current list of theaters from the database.
 	mr.columnRows, _, mr.listColumnsErr = listTheaters(db)
@@ -2242,10 +2212,8 @@ func updateTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	})
 
-	isCompleted := false
-
 	// Loop until a valid theater ID is selected for update.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "UPDATE THEATER"
 
@@ -2284,22 +2252,20 @@ func updateTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
-		isCompleted = true
-
 		if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
 			return clearScreenErr
 
 		}
 
-	}
+		break
 
-	isColumnPicking := true
+	}
 
 	mr.debugMsg = ""
 
 	// Loop to allow the user to pick which column of the selected theater to update.
-	for isColumnPicking {
+	for {
 
 		if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
@@ -2333,7 +2299,7 @@ func updateTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
-		fmt.Printf("\n%s\n\n", debugMsg)
+		fmt.Printf("\n%s\n\n", mr.debugMsg)
 		fmt.Printf("GUIDE: Type \"Back\" to go back to the previous menu.\n\n")
 		fmt.Print("Input column number: ")
 
@@ -2384,23 +2350,21 @@ func updateTheater(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
-		isColumnPicking = false
+		mr.debugMsg = ""
+
+		return nil
 
 	}
 
-	mr.debugMsg = ""
-
-	return nil
-
 }
 
-func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg string) error {
+func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 	var movieId, theaterId, availableSeats, isActive, selectedRecord, userInput string
 	var id, idx int
 	var convErr error
 
-	mr.debugMsg = debugMsg
+	mr.debugMsg = ""
 
 	// Fetch the current list of sessions from the database.
 	mr.columnRows, _, mr.listColumnsErr = listSessions(db)
@@ -2436,10 +2400,8 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	})
 
-	isCompleted := false
-
 	// Loop until a valid session ID is selected for update.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "UPDATE SESSION"
 
@@ -2478,22 +2440,20 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
-		isCompleted = true
-
 		if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
 			return clearScreenErr
 
 		}
 
-	}
+		break
 
-	isColumnPicking := true
+	}
 
 	mr.debugMsg = ""
 
 	// Loop to allow the user to pick which column of the selected session to update.
-	for isColumnPicking {
+	for {
 
 		if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
@@ -2503,7 +2463,7 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		fmt.Printf("---------------------------------------- PICK SESSION COLUMNS ---------------------------------------\n\n")
 
-		bufferQueryRow := db.QueryRow("SELECT * FROM theaters WHERE id = $1;", idx)
+		bufferQueryRow := db.QueryRow("SELECT * FROM sessions WHERE id = $1;", idx)
 
 		if scanErr := bufferQueryRow.Scan(&id, &movieId, &theaterId, &availableSeats, &isActive); scanErr != nil {
 
@@ -2527,7 +2487,7 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
-		fmt.Printf("\n%s\n\n", debugMsg)
+		fmt.Printf("\n%s\n\n", mr.debugMsg)
 		fmt.Printf("GUIDE: Type \"Back\" to go back to the previous menu.\n\n")
 		fmt.Print("Input column number: ")
 
@@ -2562,7 +2522,7 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		case "2":
 
-			if updateSessionErr := updateSessionColumn(db, scanner, columns, "movie_id", idx); updateSessionErr != "" {
+			if updateSessionErr := updateSessionColumn(db, scanner, columns, "is_active", idx); updateSessionErr != "" {
 
 				mr.debugMsg = updateSessionErr
 
@@ -2572,7 +2532,7 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		case "3":
 
-			if updateSessionErr := updateSessionColumn(db, scanner, columns, "is_active", idx); updateSessionErr != "" {
+			if updateSessionErr := updateSessionColumn(db, scanner, columns, "movie_id", idx); updateSessionErr != "" {
 
 				mr.debugMsg = updateSessionErr
 
@@ -2598,24 +2558,22 @@ func updateSession(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
-		isColumnPicking = false
+		mr.debugMsg = ""
+
+		return nil
 
 	}
 
-	mr.debugMsg = ""
-
-	return nil
-
 }
 
-func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMsg string) error {
+func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer) error {
 
 	var sessionId, customerName, seatCount, createdAt, selectedRecord, userInput string
 	var id, idx int
 	var convErr error
 
 	mr.additionalMsg = ""
-	mr.debugMsg = debugMsg
+	mr.debugMsg = ""
 
 	// Fetch the current list of bookings from the database.
 	mr.columnRows, mr.columnRowsKeys, mr.listColumnsErr = listBookings(db)
@@ -2651,10 +2609,8 @@ func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 	})
 
-	isCompleted := false
-
 	// Loop until a valid booking ID is selected for update.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "UPDATE BOOKING"
 
@@ -2732,22 +2688,20 @@ func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
-		isCompleted = true
-
 		if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
 			return clearScreenErr
 
 		}
 
-	}
+		break
 
-	isColumnPicking := true
+	}
 
 	mr.debugMsg = ""
 
 	// Loop to allow the user to pick which column of the selected booking to update.
-	for isColumnPicking {
+	for {
 
 		if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
@@ -2781,7 +2735,7 @@ func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
-		fmt.Printf("\n%s\n\n", debugMsg)
+		fmt.Printf("\n%s\n\n", mr.debugMsg)
 		fmt.Printf("GUIDE: Type \"Back\" to go back to the previous menu.\n\n")
 		fmt.Print("Input column number: ")
 
@@ -2852,13 +2806,11 @@ func updateBooking(db *sql.DB, scanner *bufio.Scanner, mr *menuRenderer, debugMs
 
 		}
 
-		isColumnPicking = false
+		mr.debugMsg = ""
+
+		return nil
 
 	}
-
-	mr.debugMsg = ""
-
-	return nil
 
 }
 
@@ -3346,7 +3298,7 @@ func updateTheaterColumn(db *sql.DB, scanner *bufio.Scanner, column map[string]s
 
 	newValue := strings.TrimSpace(scanner.Text())
 
-	// Handle integer and boolean types with specific transaction calls.
+	// Handle integer andean types with specific transaction calls.
 	if strings.Contains(columnType, "int") {
 
 		if _, convErr := strconv.Atoi(newValue); convErr != nil || newValue == "" {
@@ -3396,7 +3348,7 @@ func updateSessionColumn(db *sql.DB, scanner *bufio.Scanner, column map[string]s
 
 	newValue := strings.TrimSpace(scanner.Text())
 
-	// Handle integer and boolean types with specific validation and transaction calls.
+	// Handle integer andean types with specific validation and transaction calls.
 	if strings.Contains(columnType, "int") {
 
 		if _, convErr := strconv.Atoi(newValue); convErr != nil || newValue == "" {
@@ -3413,15 +3365,38 @@ func updateSessionColumn(db *sql.DB, scanner *bufio.Scanner, column map[string]s
 
 	} else if strings.Contains(columnType, "bool") {
 
-		if _, convErr := strconv.ParseBool(newValue); convErr != nil {
+		var convErr error
+		var convValue bool
 
-			return "ERROR: Invalid input. Expected \"true\" or \"false\"."
+		convValue, convErr = strconv.ParseBool(newValue)
+
+		if convErr != nil {
+
+			return "ERROR: Invalid input. Expected \"true\" or \"false\" value."
 
 		}
 
 		if updateTransErr := updateSessionColumnTrans(db, scanner, columnName, newValue, idx); updateTransErr != "" {
 
 			return updateTransErr
+
+		}
+
+		if convValue {
+
+			if sessionSeatsRegenerationErr := sessionSeatsRegeneration(db, idx); sessionSeatsRegenerationErr != nil {
+
+				return "ERROR: Something wrong with the session regeneration."
+
+			}
+
+		} else {
+
+			if bulkDeleteErr := bulkDeleteSessionSeats(db, idx); bulkDeleteErr != nil {
+
+				return "ERROR: Something wrong with the session seats deletion."
+
+			}
 
 		}
 
@@ -3674,5 +3649,131 @@ func updateBookingColumnTrans(db *sql.DB, scanner *bufio.Scanner, columnName str
 	}
 
 	return ""
+
+}
+
+func sessionSeatsRegeneration(db *sql.DB, idx int) error {
+
+	// Start a transaction to regenerate session seats.
+	trx, beginErr := db.Begin()
+
+	if beginErr != nil {
+
+		return beginErr
+
+	}
+
+	// Insert missing session seats for the theater associated with the session.
+	if _, execErr := trx.Exec("INSERT INTO session_seats (session_id, physical_seat_id) SELECT $1, id FROM physical_seats WHERE theater_id = (SELECT theater_id FROM sessions WHERE id = $1) ON CONFLICT (session_id, physical_seat_id) DO NOTHING;", idx); execErr != nil {
+
+		if rollbackErr := trx.Rollback(); rollbackErr != nil {
+
+			return rollbackErr
+
+		}
+
+		return execErr
+
+	}
+
+	// Commit the transaction.
+	if commitErr := trx.Commit(); commitErr != nil {
+
+		return commitErr
+
+	}
+
+	return nil
+
+}
+
+func bulkDeleteSessionSeats(db *sql.DB, idx int) error {
+
+	// Start a transaction to delete unbooked session seats.
+	trx, beginErr := db.Begin()
+
+	if beginErr != nil {
+
+		return beginErr
+
+	}
+
+	// Execute the deletion of unbooked seats for the specified session.
+	if _, execErr := trx.Exec("DELETE FROM session_seats WHERE session_id = $1 AND is_booked = false;", idx); execErr != nil {
+
+		if rollbackErr := trx.Rollback(); rollbackErr != nil {
+
+			return rollbackErr
+
+		}
+
+		return execErr
+
+	}
+
+	// Commit the transaction.
+	if commitErr := trx.Commit(); commitErr != nil {
+
+		return commitErr
+
+	}
+
+	return nil
+
+}
+
+func renderSeatsMap(db *sql.DB, sessionId int) error {
+
+	counter := 0
+
+	// Query the seat layout and booking status for the session.
+	seats, queryErr := db.Query("SELECT ps.row_letter, ps.seat_num, ss.is_booked FROM physical_seats ps JOIN session_seats ss ON ps.id = ss.physical_seat_id WHERE ss.session_id = $1 ORDER BY ps.row_letter, ps.seat_num;", sessionId)
+
+	if queryErr != nil {
+
+		return queryErr
+
+	}
+
+	fmt.Printf("======================================== STAGE/SCREEN ========================================\n\n")
+
+	// Iterate through the seats and print a visual map of availability.
+	for seats.Next() {
+
+		var rowLetter string
+		var seatNum int
+		var isBooked bool
+
+		if scanErr := seats.Scan(&rowLetter, &seatNum, &isBooked); scanErr != nil {
+
+			return scanErr
+
+		}
+
+		if isBooked {
+
+			fmt.Printf("\t[ X  ]")
+
+		} else {
+
+			fmt.Printf("\t[ %v ]", rowLetter+strconv.Itoa(seatNum))
+
+		}
+
+		if counter == 9 {
+
+			fmt.Printf("\n\n")
+
+			counter = 0
+
+		} else {
+
+			counter++
+
+		}
+
+	}
+
+	return nil
 
 }

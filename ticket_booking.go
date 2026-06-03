@@ -2,216 +2,319 @@ package main
 
 import (
 	"bufio"
+	"cmp"
 	"database/sql"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func ticketBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, debugMsg string) error {
+func ticketBooking(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *menuRenderer) error {
 
-	// Initialize the booking environment and select an active session.
-	clearScreen()
-	debugMsg = ""
+	// Retrieve active sessions and initialize the menu renderer state.
+	sessionsMap, listSessionsErr := listActiveSessions(db)
 
-	listActiveSessionsErr := error(nil)
-	currentTime := time.Now().Format("2006-01-02 15:04:05")
+	if listSessionsErr != nil {
 
-	selectedSessionId, sessionDetail, totalSeats, listActiveSessionsErr := listActiveSessions(db, scanner)
+		return listSessionsErr
 
-	if listActiveSessionsErr != nil {
-		return listActiveSessionsErr
 	}
 
-	// Enter the main booking loop until all seats are sold or the user exits.
-	for totalSeats > 0 {
-		clearScreen()
+	mr.debugMsg = ""
+	mr.sessionsMap = sessionsMap
+	mr.sessionsMapKeys = make([]int, 0, len(sessionsMap))
+	mr.sectionHeader = "TICKET BOOKING"
 
-		fmt.Printf("%v\n\n", debugMsg)
-		fmt.Println("----------------- TICKET BOOKING SYSTEM -----------------")
-		fmt.Printf("Session Detail:\n%v\n", sessionDetail)
-		fmt.Printf("Available ticket(s): %d\n\n", totalSeats)
-		fmt.Printf("GUIDE: Enter customer name and ticket amount booked, separated by space. Example: Joe 10\n\n")
-		fmt.Print("Input: ")
-		debugMsg = ""
+	for k := range sessionsMap {
 
-		// Read and parse user input for customer name and ticket amount.
-		if !scanner.Scan() {
-			return scanner.Err()
+		mr.sessionsMapKeys = append(mr.sessionsMapKeys, k)
+
+	}
+
+	// Sort session IDs to ensure a consistent display order.
+	slices.SortFunc(mr.sessionsMapKeys, func(a, b int) int {
+
+		return cmp.Compare(a, b)
+
+	})
+
+	// Enter the main booking loop.
+	for {
+
+		// Render the session selection menu and get user input.
+		if renderMenuErr := mr.renderMenuTicket(); renderMenuErr != nil {
+
+			return renderMenuErr
+
 		}
 
-		userInput := strings.ToLower(scanner.Text())
+		if !scanner.Scan() {
 
-		switch userInput {
-		case "exit":
+			return scanner.Err()
 
-			// If the user exits, optionally print a booking summary before returning.
-			fmt.Print("INFO: Booking process has finished. Print summary? (y/n): ")
+		}
 
-			if scanner.Scan() {
-				if strings.ToLower(scanner.Text()) == "y" {
+		// Validate the session ID input.
+		userInput := strings.TrimSpace(strings.ToLower(scanner.Text()))
 
-					bookSumErr := printBookSummary(db, currentTime)
+		sessionId, convErr := strconv.Atoi(userInput)
 
-					if bookSumErr != nil {
+		if convErr != nil {
 
-						return bookSumErr
+			switch userInput {
 
-					}
+			case "back":
 
-				}
-			} else {
-				return scanner.Err()
-			}
-
-			fmt.Printf("\nPress enter to continue...")
-
-			if scanner.Scan() {
 				return nil
-			} else {
-				return scanner.Err()
-			}
 
-		case "list":
-			// Allow the user to switch to a different active session.
-			selectedSessionId, sessionDetail, totalSeats, listActiveSessionsErr = listActiveSessions(db, scanner)
+			default:
 
-			if listActiveSessionsErr != nil {
-				return listActiveSessionsErr
+				mr.debugMsg = "ERROR: Invalid input. Expected numeric input for session ID."
+
+				continue
 
 			}
+
+		}
+
+		if !slices.Contains(mr.sessionsMapKeys, sessionId) {
+
+			mr.debugMsg = "ERROR: Invalid session ID. Refer to the list of available sessions above."
 
 			continue
 
-		default:
-			// Validate the customer name and process the booking if seats are available.
+		}
 
-			bufferInput := strings.Split(userInput, " ")
+		// Display the seating map for the chosen session and prompt for a seat.
+		if seatsMapErr := renderSeatsMap(db, sessionId); seatsMapErr != nil {
 
-			if len(bufferInput) < 2 {
-
-				debugMsg = "ERROR: Invalid input. Refer to the given GUIDE below."
-
-				continue
-
-			}
-
-			ticketAmount, convErr := strconv.Atoi(bufferInput[1])
-
-			if convErr != nil {
-
-				debugMsg = "ERROR: Invalid input. Expected numeric input for ticket amount. Refer to the given GUIDE below."
-
-				continue
-
-			}
-
-			var ticketAmountErr string
-
-			ticketAmount, ticketAmountErr = ticketAmountValidator(ticketAmount)
-
-			if ticketAmountErr != "" {
-
-				debugMsg = ticketAmountErr
-
-				continue
-
-			}
-
-			var customerNameErr string
-
-			customerName := strings.Join(bufferInput[0:len(bufferInput)-1], " ")
-
-			customerName, customerNameErr = customerNameValidator(nameRegex, customerName)
-
-			if customerNameErr != "" {
-
-				debugMsg = customerNameErr
-
-				continue
-
-			}
-
-			// If seats are available, perform a database transaction to update seats and record the booking.
-			if totalSeats >= ticketAmount {
-
-				trx, err := db.Begin()
-
-				if err != nil {
-
-					return err
-
-				}
-
-				// Update the database with the new seat count and record the booking.
-				_, execUpdateErr := trx.Exec("UPDATE sessions SET available_seats = (available_seats - $1) WHERE id = $2;", ticketAmount, selectedSessionId)
-
-				if execUpdateErr != nil {
-
-					if rollbackErr := trx.Rollback(); rollbackErr != nil {
-						return rollbackErr
-					}
-
-					return execUpdateErr
-
-				}
-
-				_, execInsertErr := trx.Exec("INSERT INTO bookings (session_id, customer_name, seat_count) VALUES ($1, $2, $3);", selectedSessionId, customerName, ticketAmount)
-
-				if execInsertErr != nil {
-
-					if rollbackErr := trx.Rollback(); rollbackErr != nil {
-						return rollbackErr
-					}
-
-					return execInsertErr
-
-				}
-
-				if commitErr := trx.Commit(); commitErr != nil {
-					return commitErr
-				}
-
-				totalSeats, _ = getAvailableSeats(db, selectedSessionId)
-
-				debugMsg = fmt.Sprintf("SUCCESS: %d seat(s) booked by %s.", ticketAmount, customerName)
-
-			} else {
-
-				debugMsg = fmt.Sprintf("ERROR: Only %d seat(s) remaining.", totalSeats)
-
-				continue
-
-			}
+			return seatsMapErr
 
 		}
+
+		fmt.Printf("%s\nPick a seat: ", mr.backGuideMsg)
+
+		if !scanner.Scan() {
+
+			return scanner.Err()
+
+		}
+
+		seatInput := strings.TrimSpace(strings.ToLower(scanner.Text()))
+
+		if seatInput == "back" {
+
+			return nil
+
+		}
+
+		// Parse the seat code and verify the seat is available.
+		rowLetter, seatNumber, getSeatCodeErr := getSeatCode(seatInput)
+
+		if getSeatCodeErr != nil {
+
+			mr.debugMsg = "ERROR: Invalid input. Expected numeric input for seat number."
+
+			continue
+
+		}
+
+		sessionSeatId, getUnbookedSeatErr := getUnbookedSeat(db, sessionId, rowLetter, seatNumber)
+
+		if getUnbookedSeatErr != nil {
+
+			mr.debugMsg = "ERROR: Invalid seat or the seat has already been booked. Please try again."
+
+			continue
+
+		}
+
+		// Prompt for and validate the customer's name.
+		fmt.Printf("\n%s\nEnter customer name: ", mr.backGuideMsg)
+
+		if !scanner.Scan() {
+
+			return scanner.Err()
+
+		}
+
+		customerName := strings.TrimSpace(scanner.Text())
+
+		if strings.ToLower(customerName) == "back" {
+
+			return nil
+
+		}
+
+		var validatorErr string
+
+		customerName, validatorErr = customerNameValidator(nameRegex, customerName)
+
+		if validatorErr != "" {
+
+			mr.debugMsg = validatorErr
+
+			continue
+
+		}
+
+		// Execute the booking transaction and update the UI message.
+		ticketTransErr := ticketTrans(db, sessionId, customerName, sessionSeatId)
+
+		if ticketTransErr != nil {
+
+			return ticketTransErr
+
+		}
+
+		mr.debugMsg = fmt.Sprintf("SUCCESS: Seat %s%d booked by %s.", rowLetter, seatNumber, customerName)
+
+	}
+
+}
+
+func listActiveSessions(db *sql.DB) (map[int]map[string]string, error) {
+
+	sessionsMap := make(map[int]map[string]string)
+
+	// Query the database for active sessions with available seats.
+	bufferQuery, querryErr := db.Query("SELECT s.id AS session_id, t.id AS theater_id, m.movie_title, m.rating, m.duration, s.available_seats FROM sessions s JOIN movies m ON s.movie_id = m.id JOIN theaters t ON s.theater_id = t.id WHERE t.is_active = 't' AND s.is_active = 't' AND s.available_seats > 0;")
+
+	if querryErr != nil {
+
+		return nil, querryErr
+
+	}
+
+	var theaterId, movieTitle, rating, duration, availableSeats string
+	var sessionId int
+
+	// Iterate through the results and populate the sessions map.
+	for bufferQuery.Next() {
+
+		if scanErr := bufferQuery.Scan(&sessionId, &theaterId, &movieTitle, &rating, &duration, &availableSeats); scanErr != nil {
+
+			return nil, scanErr
+
+		}
+
+		if _, ok := sessionsMap[sessionId]; !ok {
+
+			sessionsMap[sessionId] = make(map[string]string)
+
+		}
+
+		sessionsMap[sessionId]["theater_id"] = theaterId
+		sessionsMap[sessionId]["movie_title"] = movieTitle
+		sessionsMap[sessionId]["rating"] = rating
+		sessionsMap[sessionId]["duration"] = duration
+		sessionsMap[sessionId]["available_seats"] = availableSeats
+
+	}
+
+	return sessionsMap, nil
+
+}
+
+func ticketTrans(db *sql.DB, sessionId int, customerName string, sessionSeatId int) error {
+
+	// Start a new database transaction.
+	trx, beginErr := db.Begin()
+
+	if beginErr != nil {
+
+		return beginErr
+
+	}
+
+	// Insert the new booking record.
+	_, execErr := trx.Exec("INSERT INTO bookings (session_id, customer_name, created_at, session_seat_id) VALUES ($1, $2, $3, $4);", sessionId, customerName, time.Now().Format("2006-01-02 15:04:05"), sessionSeatId)
+
+	if execErr != nil {
+
+		if rollbackErr := trx.Rollback(); rollbackErr != nil {
+
+			return rollbackErr
+
+		}
+
+		return execErr
+
+	}
+
+	// Decrement the available seats for the session.
+	_, execErr = trx.Exec("UPDATE sessions SET available_seats = available_seats - 1 WHERE id = $1;", sessionId)
+
+	if execErr != nil {
+
+		if rollbackErr := trx.Rollback(); rollbackErr != nil {
+
+			return rollbackErr
+
+		}
+
+		return execErr
+
+	}
+
+	// Mark the specific seat as booked.
+	_, execErr = trx.Exec("UPDATE session_seats SET is_booked = 't' WHERE id = $1;", sessionSeatId)
+
+	if execErr != nil {
+
+		if rollbackErr := trx.Rollback(); rollbackErr != nil {
+
+			return rollbackErr
+
+		}
+
+		return execErr
+
+	}
+
+	// Commit the transaction.
+	if commitErr := trx.Commit(); commitErr != nil {
+
+		return commitErr
+
 	}
 
 	return nil
 
 }
 
-func listActiveSessions(db *sql.DB, scanner *bufio.Scanner) (int, string, int, error) {
+func getUnbookedSeat(db *sql.DB, sessionId int, rowLetter string, seatNumber int) (int, error) {
 
-	// Prompt the user to select a session and retrieve its details.
-	selectedSessionId, sessionDetail, getSessionErr := getSession(db, scanner)
+	var sessionSeatId int
 
-	if getSessionErr != nil {
+	// Query for an unbooked seat ID matching the session and physical seat coordinates.
+	bufferQueryRow := db.QueryRow("SELECT ss.id FROM session_seats ss JOIN physical_seats ps ON ss.physical_seat_id = ps.id WHERE ss.session_id = $1 AND ps.row_letter = $2 AND ps.seat_num = $3 AND ss.is_booked = 'f';", sessionId, rowLetter, seatNumber)
 
-		return 0, "", 0, getSessionErr
+	if scanErr := bufferQueryRow.Scan(&sessionSeatId); scanErr != nil {
 
-	}
-
-	// Retrieve the number of available seats for the selected session.
-	totalSeats, getSeatsErr := getAvailableSeats(db, selectedSessionId)
-
-	if getSeatsErr != nil {
-
-		return 0, "", 0, getSeatsErr
+		return 0, scanErr
 
 	}
 
-	return selectedSessionId, sessionDetail, totalSeats, nil
+	return sessionSeatId, nil
+
+}
+
+func getSeatCode(seatInput string) (string, int, error) {
+
+	// Extract the row letter and convert the remaining input to a seat number.
+	rowLetter := strings.ToUpper(seatInput[0:1])
+	seatNumber, convErr := strconv.Atoi(seatInput[1:])
+
+	if convErr != nil {
+
+		return "", 0, convErr
+
+	}
+
+	return rowLetter, seatNumber, nil
+
 }

@@ -15,17 +15,18 @@ import (
 	"golang.org/x/term"
 )
 
-func mainMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *menuRenderer, debugMsg string) error {
+func mainMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *menuRenderer) error {
 
-	isCompleted := false
+	var returnSignal Signal
+	var err error
 
 	// Loop until the user chooses to exit the main menu.
-	for !isCompleted {
+	for {
 
 		// Render the main menu with the current debug message.
 		mr.sectionHeader = "MAIN MENU"
 		mr.menuSlice = mainMenuList()
-		mr.debugMsg = debugMsg
+		mr.debugMsg = ""
 
 		if renderMenuErr := mr.renderMenu(); renderMenuErr != nil {
 
@@ -61,23 +62,11 @@ func mainMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *
 			} else {
 
 				// Enter the administration sub-menu and handle navigation signals.
-				signal, administrationErr := administration(db, scanner, nameRegex, mr, debugMsg)
+				returnSignal, err = administration(db, scanner, nameRegex, mr)
 
-				if administrationErr != nil {
+				if err != nil {
 
-					return administrationErr
-
-				}
-
-				if signal == "back" {
-
-					continue
-
-				}
-
-				if signal == "exit" {
-
-					isCompleted = true
+					return err
 
 				}
 
@@ -86,7 +75,7 @@ func mainMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *
 		case "2":
 
 			// Enter the ticket booking flow.
-			if ticketBookingErr := ticketBooking(db, scanner, nameRegex, debugMsg); ticketBookingErr != nil {
+			if ticketBookingErr := ticketBooking(db, scanner, nameRegex, mr); ticketBookingErr != nil {
 
 				return ticketBookingErr
 
@@ -96,7 +85,7 @@ func mainMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *
 
 		case "3":
 
-			isCompleted = true
+			return nil
 
 		default:
 
@@ -106,34 +95,39 @@ func mainMenu(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *
 
 		}
 
-	}
+		if returnSignal == Exit {
 
-	return nil
+			return nil
+
+		}
+
+	}
 
 }
 
-func administration(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *menuRenderer, debugMsg string) (string, error) {
+func administration(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp, mr *menuRenderer) (Signal, error) {
 
-	isCompleted := false
+	var returnSignal Signal
+	var err error
 
 	// Loop until the user chooses to go back or exit the administration menu.
-	for !isCompleted {
+	for {
 
 		mr.sectionHeader = "ADMINISTRATION MENU"
 		mr.menuSlice = adminMenuList()
-		mr.debugMsg = debugMsg
+		mr.debugMsg = ""
 
 		// Render the administration menu.
 		if renderMenuErr := mr.renderMenu(); renderMenuErr != nil {
 
-			return "", renderMenuErr
+			return returnSignal, renderMenuErr
 
 		}
 
 		// Handle administrative actions like delete, insert, list, and update.
 		if !scanner.Scan() {
 
-			return "", scanner.Err()
+			return returnSignal, scanner.Err()
 
 		}
 
@@ -142,99 +136,55 @@ func administration(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp
 		switch userInput {
 		case "1":
 
-			signal, deleteErr := deleteMenu(db, scanner, mr, debugMsg)
+			returnSignal, err = deleteMenu(db, scanner, mr)
 
-			if deleteErr != nil {
+			if err != nil {
 
-				return "", deleteErr
-
-			}
-
-			if signal == "back" {
-
-				continue
-
-			}
-
-			if signal == "exit" {
-
-				isCompleted = true
+				return returnSignal, err
 
 			}
 
 		case "2":
 
-			signal, insertErr := insertMenu(db, scanner, nameRegex, mr, debugMsg)
+			returnSignal, err = insertMenu(db, scanner, nameRegex, mr)
 
-			if insertErr != nil {
+			if err != nil {
 
-				return "", insertErr
-
-			}
-
-			if signal == "back" {
-
-				continue
-
-			}
-
-			if signal == "exit" {
-
-				isCompleted = true
+				return returnSignal, err
 
 			}
 
 		case "3":
 
-			signal, listErr := listMenu(db, scanner, mr, debugMsg)
+			returnSignal, err = listMenu(db, scanner, mr)
 
-			if listErr != nil {
+			if err != nil {
 
-				return "", listErr
-
-			}
-
-			if signal == "back" {
-
-				continue
-
-			}
-
-			if signal == "exit" {
-
-				isCompleted = true
+				return returnSignal, err
 
 			}
 
 		case "4":
 
-			signal, updateErr := updateMenu(db, scanner, mr, debugMsg)
+			returnSignal, err = updateMenu(db, scanner, mr)
 
-			if updateErr != nil {
+			if err != nil {
 
-				return "", updateErr
-
-			}
-
-			if signal == "back" {
-
-				continue
-
-			}
-
-			if signal == "exit" {
-
-				isCompleted = true
+				return returnSignal, err
 
 			}
 
 		case "5":
 
-			return "back", nil
+			returnSignal = Back
+
+			return returnSignal, nil
 
 		case "6":
 
-			return "exit", nil
+			returnSignal = Exit
+
+			return returnSignal, nil
 
 		default:
 
@@ -244,9 +194,13 @@ func administration(db *sql.DB, scanner *bufio.Scanner, nameRegex *regexp.Regexp
 
 		}
 
-	}
+		if returnSignal == Exit {
 
-	return "exit", nil
+			return returnSignal, nil
+
+		}
+
+	}
 
 }
 
@@ -523,15 +477,51 @@ func dbInitializator() (*sql.DB, error) {
 }
 
 type menuRenderer struct {
-	sectionHeader string
-	menuSlice     []string
-	debugMsg      string
+	sectionHeader  string
+	menuSlice      []string
+	debugMsg       string
+	filterGuideMsg string
 
 	additionalMsg       string
 	columnRows          map[int]map[string]string
 	columnRowsKeys      []int
 	listColumnsErr      error
 	convertedColumnRows string
+
+	sessionsMapKeys []int
+	sessionsMap     map[int]map[string]string
+	backGuideMsg    string
+	exitGuideMsg    string
+}
+
+func (mr *menuRenderer) renderMenuTicket() error {
+
+	mr.backGuideMsg = "GUIDE: Type \"Back\" to go back to the previous menu.\n\n"
+
+	// Clear the screen and render the standard menu header and options.
+	if clearScreenErr := clearScreen(); clearScreenErr != nil {
+
+		return clearScreenErr
+
+	}
+
+	fmt.Printf("------------------------------------------- %s -------------------------------------------\n\n", mr.sectionHeader)
+
+	for _, key := range mr.sessionsMapKeys {
+
+		fmt.Printf("Session ID\t: %d\nTheater ID\t: %s\nMovie Title\t: %s\nRating\t\t: %s\nDuration\t: %s\nAvailable Seats\t: %s\n\n", key, mr.sessionsMap[key]["theater_id"], mr.sessionsMap[key]["movie_title"], mr.sessionsMap[key]["rating"], mr.sessionsMap[key]["duration"], mr.sessionsMap[key]["available_seats"])
+
+	}
+
+	// Print the debug message and input prompt, then reset the debug message.
+	fmt.Printf("\n%s\n\n", mr.backGuideMsg)
+	fmt.Printf("%s\n\n", mr.debugMsg)
+	fmt.Printf("Session ID: ")
+
+	mr.debugMsg = ""
+
+	return nil
+
 }
 
 func (mr *menuRenderer) renderMenu() error {
@@ -563,6 +553,9 @@ func (mr *menuRenderer) renderMenu() error {
 
 func (mr *menuRenderer) renderMenuFilter() error {
 
+	mr.backGuideMsg = "GUIDE: Type \"Back\" to go back to the previous menu.\n"
+	mr.filterGuideMsg = "GUIDE: Type \"Filter <keyword>\" to filter the movie title out by <keyword>. Example: Filter avangers\nGUIDE: Type \"Reset\" to reset the filter result.\n\n"
+
 	// Clear the screen and render the menu header with filter-specific content and guides.
 	if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
@@ -574,9 +567,7 @@ func (mr *menuRenderer) renderMenuFilter() error {
 	fmt.Print(mr.additionalMsg)
 	fmt.Print(mr.convertedColumnRows)
 	fmt.Printf("\n%s\n\n", mr.debugMsg)
-	fmt.Printf("GUIDE: Type \"Back\" to go back to the previous menu.\n")
-	fmt.Printf("GUIDE: Type \"Filter <keyword>\" to filter the movie title out by <keyword>. Example: Filter avangers\n")
-	fmt.Printf("GUIDE: Type \"Reset\" to reset the filter result.\n\n")
+	fmt.Printf("%s%s", mr.backGuideMsg, mr.filterGuideMsg)
 
 	mr.debugMsg = ""
 
@@ -585,6 +576,8 @@ func (mr *menuRenderer) renderMenuFilter() error {
 }
 
 func (mr *menuRenderer) renderMenuNonFilter() error {
+
+	mr.backGuideMsg = "GUIDE: Type \"Back\" to go back to the previous menu.\n"
 
 	// Clear the screen and render the menu header with non-filter content and a back guide.
 	if clearScreenErr := clearScreen(); clearScreenErr != nil {
@@ -596,7 +589,7 @@ func (mr *menuRenderer) renderMenuNonFilter() error {
 	fmt.Printf("------------------------------------------- %s -------------------------------------------\n\n", mr.sectionHeader)
 	fmt.Print(mr.convertedColumnRows)
 	fmt.Printf("\n%s\n\n", mr.debugMsg)
-	fmt.Printf("GUIDE: Type \"Back\" to go back to the previous menu.\n")
+	fmt.Printf("%s", mr.backGuideMsg)
 
 	mr.debugMsg = ""
 
@@ -606,6 +599,8 @@ func (mr *menuRenderer) renderMenuNonFilter() error {
 
 func (mr *menuRenderer) renderMenuInsert() error {
 
+	mr.backGuideMsg = "GUIDE: Type \"Back\" to go back to the previous menu.\n"
+
 	// Clear the screen and render the header for the insertion menu.
 	if clearScreenErr := clearScreen(); clearScreenErr != nil {
 
@@ -614,8 +609,15 @@ func (mr *menuRenderer) renderMenuInsert() error {
 	}
 
 	fmt.Printf("------------------------------------------- %s -------------------------------------------\n\n", mr.sectionHeader)
-	fmt.Printf("GUIDE: Type \"debug back\" to go back to the previous menu.\n")
+	fmt.Printf("%s", mr.backGuideMsg)
 
 	return nil
 
 }
+
+type Signal string
+
+const (
+	Back Signal = "back"
+	Exit Signal = "exit"
+)

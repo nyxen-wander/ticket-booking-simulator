@@ -11,8 +11,6 @@ import (
 
 func main() {
 
-	// Initialize the menu renderer and input validation regex.
-	var debugMsg string
 	mr := &menuRenderer{}
 
 	nameRegex := regexp.MustCompile(`^[[:alpha:]|\s]*$`)
@@ -34,7 +32,7 @@ func main() {
 	}
 
 	// Run the main menu loop and handle any fatal errors.
-	if mainMenuErr := mainMenu(db, scanner, nameRegex, mr, debugMsg); mainMenuErr != nil {
+	if mainMenuErr := mainMenu(db, scanner, nameRegex, mr); mainMenuErr != nil {
 		log.Fatal(mainMenuErr)
 	}
 
