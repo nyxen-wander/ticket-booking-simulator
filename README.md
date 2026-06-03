@@ -99,12 +99,19 @@ ADMIN_PASSWD=your_secure_admin_password
 ```
 
 ### 4. Installation & Execution
-# Fetch dependencies
+#### Fetch dependencies
 ```bash
 go mod tidy
 ```
 
-# Run the simulator
+#### Run the simulator
 ```bash
 go run .
 ```
+
+## Future Roadmap
+[x] Advanced Seat Mapping: Introduce physical coordinate arrays (e.g., A1, B5) mapped via a localized theater inventory layout table.
+
+[ ] RESTful Web API Interface: Refactor the core operational logic away from the terminal layout into a decoupled JSON API utilizing a framework like Gin or Fiber.
+
+[ ] GUI Evolution: Build an on-site dashboard for employees using Go-based UI toolkits.
