@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-06-03
+### Added
+- **Coordinate-Based Seat Matrix**: Implemented `physical_seats` as an immutable structural blueprint and `session_seats` for live inventory, establishing a 1-to-1 physical grid map (e.g., A1, B4) across theaters.
+- **Dynamic Terminal Painter**: Added matrix rendering logic to visually display theater layouts and live booking statuses (e.g., `[ A1 ]`, `[ XX ]`) directly within the CLI.
+- **Automated Inventory Lifecycle**: Introduced `sessionSeatsRegeneration` to auto-clone blueprint seats upon session activation and `bulkDeleteSessionSeats` to safely purge unbooked database bloat when a session is deactivated.
+
+### Changed
+- **Atomic Booking Transactions**: Refactored the `ticketBooking` engine to perform row-level locks utilizing strict `WHERE is_booked = false` boundaries and `RETURNING id`, guaranteeing absolute concurrency safety during simultaneous purchases.
+- **Ledger-Based Receipts**: Updated the `bookings` schema to rely on a strict foreign key relationship with specific physical coordinates (`session_seat_id`) instead of integer subtraction, permanently preserving historical sales data.
+- **Session State Management**: Transitioned the `is_active` flag into a strict draft/publish trigger, maximizing database storage efficiency by delaying live seat generation until a session officially opens.
+
 ## [1.3.0] - 2026-05-28
 ### Added
 - **Administrative CRUD Module**: Introduced a secure, dedicated database management panel (`administration.go`) containing deep record handling functions (`insertMenu`, `updateMenu`, `deleteMenu`) to perform direct data operations over relational structures.
@@ -13,27 +24,12 @@ All notable changes to this project will be documented in this file.
 - **Strict Pointer Propagation**: Updated core utility signatures to pass explicit `*sql.DB` connection frames and `*bufio.Scanner` inputs deep down into nested routing layers, preventing terminal state conflicts and resource footprint spikes.
 
 ### Fixed
-- **Call-Stack Accumulation Hazard**: Eliminated potential stack-overflow panics triggered under repetitive user typographical validation loops by introducing iterative menus.
-- **Redundant Environment Discovery**: Cleaned up duplicated variable sweeps by formalizing a strict single-lifecycle load pattern at the earliest operational phase.
+- **Call-Stack Accumulation Hazard**: Eliminated potential stack-overflow panics triggered under repetitive user typographical validation loops by introducing the iterative routing loop.
 
-## [1.2.0] - 2026-05-11
+## [1.2.0] - 2026-05-15
 ### Added
-- **Atomic Transactions**: Implemented `db.Begin()`, `Commit()`, and `Rollback()` to ensure that seat updates and booking records are processed as a single, unbreakable unit.
-- **Project Modularization**: Refactored the single-file script into a multi-file package (`main.go`, `db_ops.go`, `utils.go`) for better maintainability and navigation.
-- **Enhanced Validation**: Added a comprehensive `customerNameAndTicketAmountValidator` helper function to centralize input logic.
-- **Robust Error Handling**: Added custom error returns for `clearScreen` and `printBookSummary` to prevent silent failures.
-
-### Changed
-- **Code Architecture**: Cleaned up the `main` loop by delegating database operations and utility tasks to dedicated functions.
-- **Database Synchronization**: Added a post-transaction seat refresh via `getAvailableSeats` to ensure the terminal always shows the true state of the database.
-
-### Fixed
-- **Logical Inversion**: Corrected the validation check in the main loop to properly trigger on error messages.
-- **Cleanup Logic**: Improved the terminal clearing function to handle cross-platform errors gracefully.
-
-## [1.1.0] - 2026-05-07
-### Added
-- **Persistent Booking Summary**: Replaced the local `bookRecord` map with a dedicated `printBookSummary` function that performs a 3-table SQL JOIN to generate reports directly from the database.
+- **Dynamic Data Formatting**: Implemented `CAST` and `TO_CHAR` functions inside SQL queries to format data output directly at the database layer before reaching Go.
+- **Summary Export**: Added an administrative function to generate reports directly from the database.
 - **Dynamic Session Switching**: Added a `list` command within the main booking loop, allowing employees to switch active sessions without restarting the application.
 - **Enhanced Time Handling**: Integrated `time.Format()` for standardized UTC/Local time strings, replacing manual string splitting for more reliable database filtering.
 - **Modular Data Fetching**: Extracted seat availability logic into a standalone `getAvailableSeats` function to improve code readability and reuse.
