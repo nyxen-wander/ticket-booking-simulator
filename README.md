@@ -112,6 +112,12 @@ go run .
 ## Future Roadmap
 [x] Advanced Seat Mapping: Introduce physical coordinate arrays (e.g., A1, B5) mapped via a localized theater inventory layout table.
 
-[ ] RESTful Web API Interface: Refactor the core operational logic away from the terminal layout into a decoupled JSON API utilizing a framework like Gin or Fiber.
+[ ] Context & Lifecycle Management: Passing cancellation contexts through application.
+
+[ ] API with Middleware & Authentication: Implementing JSON Web Tokens (JWT).
+
+[ ] Database Telemetry & Monitoring: Integrate resource tracking, query execution times, connection pool health, and query cancellation rates.
+
+[ ] Caching Layer (Redis): Introduce Redis as an in-memory cache to temporarily hold the matrix layout, serving it to users instantly and only hitting the main database when a transaction actually occurs.
 
 [ ] GUI Evolution: Build an on-site dashboard for employees using Go-based UI toolkits.
